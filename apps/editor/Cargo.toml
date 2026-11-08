@@ -1,0 +1,38 @@
+[package]
+name = "chida-editor"
+version = "1.0.0"
+edition = "2021"
+description = "Chida interactive editor, web edition (Leptos CSR, Persian first)"
+license = "MIT"
+
+# Standalone workspace: this crate targets wasm32-unknown-unknown only.
+# Its wasm dependencies (wasm-bindgen, web-sys, Leptos CSR) must not be
+# built for the host target, so the root workspace excludes it (see the
+# root Cargo.toml) and it declares its own empty workspace here, exactly
+# like apps/desktop/ui does.
+[workspace]
+
+[dependencies]
+chida-core = { path = "../../crates/chida-core" }
+chida-db = { path = "../../crates/chida-db" }
+chida-logic = { path = "../../crates/chida-logic" }
+leptos = { version = "0.8", features = ["csr"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+wasm-bindgen = "0.2"
+js-sys = "0.3"
+web-sys = { version = "0.3", features = [
+    "Blob",
+    "Url",
+    "HtmlAnchorElement",
+    "Document",
+    "Window",
+    "Storage",
+    "Element",
+    "DomRect",
+    "FileReader",
+    "File",
+    "FileList",
+    "HtmlInputElement",
+] }
+console_error_panic_hook = "0.1"
