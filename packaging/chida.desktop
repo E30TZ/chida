@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Chida
+GenericName=Visual Full-Stack Builder
+Comment=Design pages, data and logic, then export a render or a complete Rust app
+Exec=chida --help
+Icon=chida
+Terminal=true
+Categories=Graphics;Development;Building;
+Keywords=design;builder;figma;rust;full-stack;
+StartupNotify=false
