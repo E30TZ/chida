@@ -1,0 +1,11 @@
+[package]
+name = "chida-ui"
+version = "1.0.0"
+edition = "2021"
+description = "Leptos frontend skeleton for the Chida desktop app"
+license = "MIT"
+
+[workspace]
+
+[dependencies]
+leptos = { version = "0.8", features = ["csr"] }
