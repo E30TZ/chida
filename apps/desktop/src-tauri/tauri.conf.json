@@ -1,0 +1,30 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Chida",
+  "version": "1.0.0",
+  "identifier": "dev.chida.app",
+  "build": {
+    "frontendDist": "../ui/dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "trunk serve --port 1420",
+    "beforeBuildCommand": "trunk build --release"
+  },
+  "app": {
+    "windows": [
+      { "title": "Chida", "width": 1440, "height": 900, "minWidth": 1100, "minHeight": 700, "resizable": true }
+    ],
+    "security": { "csp": null }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["rpm", "appimage", "deb"],
+    "icon": ["icons/icon.png"],
+    "category": "Graphics",
+    "shortDescription": "Visual full-stack builder",
+    "longDescription": "Chida is a visual full-stack builder written in Rust. Design pages, data and logic in one place, then export a render or a complete Rust application.",
+    "linux": {
+      "rpm": { "release": "1" },
+      "appimage": { "bundleMediaFramework": false }
+    }
+  }
+}

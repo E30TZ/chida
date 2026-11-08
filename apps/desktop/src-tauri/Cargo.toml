@@ -1,0 +1,28 @@
+[package]
+name = "chida-desktop"
+version = "1.0.0"
+edition = "2021"
+description = "Chida desktop app for Fedora (Tauri 2 shell, Leptos UI)"
+license = "MIT"
+
+# This crate is intentionally a standalone workspace: building it needs the
+# system WebKitGTK and GTK development libraries (Fedora:
+# webkit2gtk4.1-devel, gtk3-devel, libsoup3-devel).
+[workspace]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chida-core = { path = "../../../crates/chida-core" }
+chida-render = { path = "../../../crates/chida-render" }
+chida-db = { path = "../../../crates/chida-db" }
+chida-logic = { path = "../../../crates/chida-logic" }
+chida-codegen = { path = "../../../crates/chida-codegen" }
+
+[profile.release]
+lto = true
+strip = true
