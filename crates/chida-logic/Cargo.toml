@@ -1,0 +1,11 @@
+[package]
+name = "chida-logic"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Visual flow engine for Chida: events, conditions and actions"
+
+[dependencies]
+chida-db = { path = "../chida-db" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
