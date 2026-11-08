@@ -60,7 +60,11 @@ fn cmd_new(args: &[String]) -> Result<(), String> {
         for (file_name, bytes) in templates::digikala_assets() {
             std::fs::write(assets_dir.join(file_name), bytes).map_err(|e| e.to_string())?;
         }
-        println!("Copied {} photo assets to {}", templates::digikala_assets().len(), assets_dir.display());
+        println!(
+            "Copied {} photo assets to {}",
+            templates::digikala_assets().len(),
+            assets_dir.display()
+        );
     }
     println!(
         "Created {} ({} pages, {} nodes, {} tables, {} flows)",
@@ -180,7 +184,9 @@ fn cmd_templates() -> Result<(), String> {
     println!("  shop          Starter plant shop: storefront, admin, products and orders, one checkout flow");
     println!("  persian       Small Persian RTL sample page proving shaped rendering");
     println!("  digikala      Marketplace Pro: Persian RTL marketplace, home, category, product and cart pages, products, categories, orders and users");
-    println!("  liquid-glass  Liquid Glass Family: glass landing, dashboard, shop and mobile pages");
+    println!(
+        "  liquid-glass  Liquid Glass Family: glass landing, dashboard, shop and mobile pages"
+    );
     println!("  saas-dashboard  Dark SaaS admin dashboard: sidebar, KPI cards, sales chart, orders and customers");
     println!("  clinic        Mehr Clinic: services, doctors, appointment booking form and page");
     println!("  restaurant    Taam Restaurant: hero, featured dishes, reservation form and full menu page");

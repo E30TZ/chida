@@ -440,15 +440,7 @@ pub fn persian_project() -> ProjectFile {
             false,
         ),
         {
-            let mut b = Node::new(
-                "fa-cta",
-                "Buy",
-                NodeKind::Button,
-                620.0,
-                148.0,
-                196.0,
-                42.0,
-            );
+            let mut b = Node::new("fa-cta", "Buy", NodeKind::Button, 620.0, 148.0, 196.0, 42.0);
             b.fill = Some(Color::WHITE);
             b.corner_radius = 10.0;
             b.text = Some("خرید گیاه".into());
@@ -458,7 +450,15 @@ pub fn persian_project() -> ProjectFile {
             b
         },
     ];
-    let mut card = Node::new("fa-card", "Info card", NodeKind::Card, 24.0, 258.0, 852.0, 190.0);
+    let mut card = Node::new(
+        "fa-card",
+        "Info card",
+        NodeKind::Card,
+        24.0,
+        258.0,
+        852.0,
+        190.0,
+    );
     card.fill = Some(Color::WHITE);
     card.corner_radius = 16.0;
     card.stroke = Some(Color::rgb(225, 230, 227));
