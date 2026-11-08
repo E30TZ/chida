@@ -11,8 +11,8 @@
 
 mod font;
 mod text;
-pub use text::{is_rtl, measure_line, shape_line, ShapedLine};
 use chida_core::{Color, Gradient, Node, NodeKind, Page, Shadow};
+pub use text::{is_rtl, measure_line, shape_line, ShapedLine};
 
 /// An RGBA pixel buffer.
 #[derive(Debug, Clone)]
@@ -202,7 +202,8 @@ fn paint_shadow(canvas: &mut Canvas, node: &Node, ox: f32, oy: f32, shadow: &Sha
                     (0.5 - dist / (blur * 2.0 + 1.0)).clamp(0.0, 1.0)
                 }
             } else {
-                let dist = sd_rounded_rect(cx, cy, x, y, node.width, node.height, node.corner_radius);
+                let dist =
+                    sd_rounded_rect(cx, cy, x, y, node.width, node.height, node.corner_radius);
                 (0.5 - dist / (blur * 2.0 + 1.0)).clamp(0.0, 1.0)
             };
             if cov > 0.0 {
@@ -321,53 +322,54 @@ fn draw_text(
         // because every chunk is shaped as one string).
         let visual_lines = wrap_words(raw_line, bold, size, width);
         for line in &visual_lines {
-        if line.is_empty() {
-            pen_y += line_h;
-            continue;
-        }
-        let shaped = text::shape_line(line, bold, size);
-        let shaped_width = shaped.width + letter_spacing * shaped.glyphs.len().saturating_sub(1) as f32;
-        let start_x = if align == "center" && width > 0.0 {
-            x + (width - shaped_width) / 2.0
-        } else if align == "left" {
-            x
-        } else if shaped.rtl && width > 0.0 {
-            x + width - shaped_width
-        } else {
-            x
-        };
-        let baseline = pen_y + fonts.ascent(bold, size);
-        let mut pen_x = start_x;
-        for g in &shaped.glyphs {
-            let (metrics, coverage) = if g.glyph_id != 0 && g.glyph_id <= u16::MAX as u32 {
-                fonts
-                    .primary(bold)
-                    .rasterize_indexed(g.glyph_id as u16, size)
+            if line.is_empty() {
+                pen_y += line_h;
+                continue;
+            }
+            let shaped = text::shape_line(line, bold, size);
+            let shaped_width =
+                shaped.width + letter_spacing * shaped.glyphs.len().saturating_sub(1) as f32;
+            let start_x = if align == "center" && width > 0.0 {
+                x + (width - shaped_width) / 2.0
+            } else if align == "left" {
+                x
+            } else if shaped.rtl && width > 0.0 {
+                x + width - shaped_width
             } else {
-                fonts.fallback(bold).rasterize(g.cluster_char, size)
+                x
             };
-            if metrics.width > 0 && metrics.height > 0 {
-                let base_x = (pen_x + g.x_offset + metrics.xmin as f32).round() as i32;
-                let base_y =
-                    (baseline - g.y_offset - metrics.ymin as f32 - metrics.height as f32).round()
-                        as i32;
-                for row in 0..metrics.height {
-                    for col in 0..metrics.width {
-                        let cov = coverage[row * metrics.width + col] as f32 / 255.0;
-                        if cov > 0.0 {
-                            canvas.blend(
-                                base_x + col as i32,
-                                base_y + row as i32,
-                                color,
-                                cov * opacity,
-                            );
+            let baseline = pen_y + fonts.ascent(bold, size);
+            let mut pen_x = start_x;
+            for g in &shaped.glyphs {
+                let (metrics, coverage) = if g.glyph_id != 0 && g.glyph_id <= u16::MAX as u32 {
+                    fonts
+                        .primary(bold)
+                        .rasterize_indexed(g.glyph_id as u16, size)
+                } else {
+                    fonts.fallback(bold).rasterize(g.cluster_char, size)
+                };
+                if metrics.width > 0 && metrics.height > 0 {
+                    let base_x = (pen_x + g.x_offset + metrics.xmin as f32).round() as i32;
+                    let base_y =
+                        (baseline - g.y_offset - metrics.ymin as f32 - metrics.height as f32)
+                            .round() as i32;
+                    for row in 0..metrics.height {
+                        for col in 0..metrics.width {
+                            let cov = coverage[row * metrics.width + col] as f32 / 255.0;
+                            if cov > 0.0 {
+                                canvas.blend(
+                                    base_x + col as i32,
+                                    base_y + row as i32,
+                                    color,
+                                    cov * opacity,
+                                );
+                            }
                         }
                     }
                 }
+                pen_x += g.x_advance + letter_spacing;
             }
-            pen_x += g.x_advance + letter_spacing;
-        }
-        pen_y += line_h;
+            pen_y += line_h;
         }
     }
 }
@@ -800,7 +802,10 @@ fn svg_node(node: &Node, ox: f32, oy: f32, out: &mut String) {
         let (tx, anchor) = if centred {
             (x + node.width / 2.0, " text-anchor=\"middle\"")
         } else if rtl {
-            (x + node.width - 2.0, " text-anchor=\"end\" direction=\"rtl\"")
+            (
+                x + node.width - 2.0,
+                " text-anchor=\"end\" direction=\"rtl\"",
+            )
         } else {
             (x + 2.0, "")
         };
@@ -1035,7 +1040,11 @@ mod tests {
         use chida_core::{Gradient, Shadow};
         let mut pg = Page::new("g", "G", "/g", 200.0, 100.0);
         let mut n = Node::rect("r", "R", 10.0, 10.0, 180.0, 80.0, Color::BLACK);
-        n.fill_gradient = Some(Gradient::new(Color::rgb(0, 0, 0), Color::rgb(255, 255, 255), 90.0));
+        n.fill_gradient = Some(Gradient::new(
+            Color::rgb(0, 0, 0),
+            Color::rgb(255, 255, 255),
+            90.0,
+        ));
         pg.root.children.push(n);
         let c = render_page(&pg, 1.0);
         let left = c.pixel(20, 50).0;
@@ -1043,12 +1052,22 @@ mod tests {
         let right = c.pixel(180, 50).0;
         assert!(left < 40, "left should be near black, got {left}");
         assert!(right > 215, "right should be near white, got {right}");
-        assert!(mid > left && mid < right, "middle blends: {left} {mid} {right}");
-        assert!((100..=155).contains(&(mid as i32)), "middle near 50 percent: {mid}");
+        assert!(
+            mid > left && mid < right,
+            "middle blends: {left} {mid} {right}"
+        );
+        assert!(
+            (100..=155).contains(&(mid as i32)),
+            "middle near 50 percent: {mid}"
+        );
         // And a vertical gradient must stay constant across a row.
         let mut pg2 = Page::new("g2", "G2", "/g2", 200.0, 100.0);
         let mut n2 = Node::rect("r", "R", 10.0, 10.0, 180.0, 80.0, Color::BLACK);
-        n2.fill_gradient = Some(Gradient::new(Color::rgb(0, 0, 0), Color::rgb(255, 255, 255), 90.0));
+        n2.fill_gradient = Some(Gradient::new(
+            Color::rgb(0, 0, 0),
+            Color::rgb(255, 255, 255),
+            90.0,
+        ));
         let _ = &mut n2;
         pg2.root.children.push(n2);
         let svg = render_page_svg(&pg);
@@ -1061,7 +1080,13 @@ mod tests {
         use chida_core::Shadow;
         let mut pg = Page::new("s", "S", "/s", 200.0, 160.0);
         let mut n = Node::rect("r", "R", 40.0, 30.0, 80.0, 50.0, Color::WHITE);
-        n.shadow = Some(Shadow { x: 0.0, y: 14.0, blur: 10.0, color: Color::BLACK, opacity: 0.5 });
+        n.shadow = Some(Shadow {
+            x: 0.0,
+            y: 14.0,
+            blur: 10.0,
+            color: Color::BLACK,
+            opacity: 0.5,
+        });
         pg.root.children.push(n);
         let c = render_page(&pg, 1.0);
         // Just under the white rect, the shadow must darken the page.
@@ -1071,7 +1096,9 @@ mod tests {
         assert_eq!(c.pixel(190, 150), (255, 255, 255, 255));
         // Without a shadow the same pixel is white.
         let mut pg2 = Page::new("s2", "S2", "/s2", 200.0, 160.0);
-        pg2.root.children.push(Node::rect("r", "R", 40.0, 30.0, 80.0, 50.0, Color::WHITE));
+        pg2.root
+            .children
+            .push(Node::rect("r", "R", 40.0, 30.0, 80.0, 50.0, Color::WHITE));
         let c2 = render_page(&pg2, 1.0);
         assert_eq!(c2.pixel(80, 92), (255, 255, 255, 255));
         let svg = render_page_svg(&pg);
@@ -1081,7 +1108,17 @@ mod tests {
     fn letter_spacing_widens_the_ink() {
         let rightmost = |spacing: f32| {
             let mut pg = Page::new("ls", "LS", "/ls", 400.0, 60.0);
-            let mut t = Node::text_node("t", "T", 4.0, 4.0, 390.0, 40.0, "ABCDEFGH", 20.0, Color::BLACK);
+            let mut t = Node::text_node(
+                "t",
+                "T",
+                4.0,
+                4.0,
+                390.0,
+                40.0,
+                "ABCDEFGH",
+                20.0,
+                Color::BLACK,
+            );
             t.letter_spacing = spacing;
             t.props.insert("align".into(), "left".into());
             pg.root.children.push(t);
@@ -1093,7 +1130,10 @@ mod tests {
         };
         let plain = rightmost(0.0);
         let spaced = rightmost(8.0);
-        assert!(spaced > plain + 30, "spacing widens ink: plain {plain}, spaced {spaced}");
+        assert!(
+            spaced > plain + 30,
+            "spacing widens ink: plain {plain}, spaced {spaced}"
+        );
     }
     #[test]
     fn auto_layout_container_renders_children_at_computed_positions() {
@@ -1130,24 +1170,26 @@ mod tests {
         let mut asset = Canvas::new(8, 8, Color::rgb(200, 30, 40));
         asset.save_png(&dir.join("red.png")).unwrap();
         let mut page = Page::new("p", "P", "/", 40.0, 40.0);
-        page.root.children.push(Node::image(
-            "img",
-            "red.png",
-            4.0,
-            4.0,
-            32.0,
-            32.0,
-        ));
+        page.root
+            .children
+            .push(Node::image("img", "red.png", 4.0, 4.0, 32.0, 32.0));
         let canvas = render_page_with_base(&page, 1.0, &dir);
         let px = canvas.pixel(20, 20);
-        assert!(px.0 > 150 && px.1 < 90 && px.2 < 90, "centre pixel is the photo red: {px:?}");
+        assert!(
+            px.0 > 150 && px.1 < 90 && px.2 < 90,
+            "centre pixel is the photo red: {px:?}"
+        );
         // A missing asset falls back to the placeholder (no panic).
         let mut page2 = Page::new("p", "P", "/", 40.0, 40.0);
-        page2.root
+        page2
+            .root
             .children
             .push(Node::image("img", "missing.jpg", 4.0, 4.0, 32.0, 32.0));
         let _ = render_page_with_base(&page2, 1.0, &dir);
         let svg = render_page_svg(&page);
-        assert!(svg.contains("<image href=\"red.png\""), "svg references the asset");
+        assert!(
+            svg.contains("<image href=\"red.png\""),
+            "svg references the asset"
+        );
     }
 }

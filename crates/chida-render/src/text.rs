@@ -246,7 +246,9 @@ mod tests {
     fn digit_run(line: &ShapedLine) -> Vec<&ShapedGlyph> {
         line.glyphs
             .iter()
-            .filter(|g| g.cluster_char.is_ascii_digit() || ('\u{6f0}'..='\u{6f9}').contains(&g.cluster_char))
+            .filter(|g| {
+                g.cluster_char.is_ascii_digit() || ('\u{6f0}'..='\u{6f9}').contains(&g.cluster_char)
+            })
             .collect()
     }
 
