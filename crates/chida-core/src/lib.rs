@@ -418,7 +418,14 @@ impl Node {
     }
     /// An image node backed by an asset file (path relative to the
     /// project file, stored in the `src` prop).
-    pub fn image(id: impl Into<String>, src: impl Into<String>, x: f32, y: f32, w: f32, h: f32) -> Self {
+    pub fn image(
+        id: impl Into<String>,
+        src: impl Into<String>,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+    ) -> Self {
         let mut n = Self::new(id, "Image", NodeKind::Image, x, y, w, h);
         n.props.insert("src".into(), src.into());
         n
@@ -794,7 +801,11 @@ mod tests {
         c.layout_direction = LayoutDirection::Row;
         c.layout_gap = 10.0;
         c.layout_padding = 20.0;
-        c.children = vec![kid("a", 50.0, 30.0), kid("b", 70.0, 40.0), kid("d", 60.0, 20.0)];
+        c.children = vec![
+            kid("a", 50.0, 30.0),
+            kid("b", 70.0, 40.0),
+            kid("d", 60.0, 20.0),
+        ];
         c.apply_layout();
         let pos: Vec<(f32, f32)> = c.children.iter().map(|k| (k.x, k.y)).collect();
         assert_eq!(pos, vec![(20.0, 20.0), (80.0, 20.0), (160.0, 20.0)]);
