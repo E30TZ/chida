@@ -1,0 +1,19 @@
+[package]
+name = "chida-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Command line interface for Chida"
+
+[[bin]]
+name = "chida"
+path = "src/main.rs"
+
+[dependencies]
+chida-core = { path = "../chida-core" }
+chida-render = { path = "../chida-render" }
+chida-db = { path = "../chida-db" }
+chida-logic = { path = "../chida-logic" }
+chida-codegen = { path = "../chida-codegen" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
