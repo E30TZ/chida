@@ -1,0 +1,81 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  cli-tarball:
+    name: CLI tarball and editor zip
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Build the CLI
+        run: cargo build --release --locked
+      - name: Test
+        run: cargo test --locked
+      - name: Package the CLI tarball
+        run: |
+          mkdir -p stage/chida-1.0.0-linux-x86_64
+          cp target/release/chida stage/chida-1.0.0-linux-x86_64/
+          cp README.md LICENSE stage/chida-1.0.0-linux-x86_64/
+          sed -e 's|^Exec=.*|Exec=chida|' -e 's|^Terminal=.*|Terminal=false|' packaging/chida.desktop > stage/chida-1.0.0-linux-x86_64/chida.desktop
+          cat > stage/chida-1.0.0-linux-x86_64/install.sh <<'EOF'
+          #!/bin/sh
+          set -e
+          DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+          mkdir -p "$HOME/.local/bin" "$HOME/.local/share/applications"
+          install -m 755 "$DIR/chida" "$HOME/.local/bin/chida"
+          install -m 644 "$DIR/chida.desktop" "$HOME/.local/share/applications/chida.desktop"
+          echo "Installed chida to $HOME/.local/bin/chida"
+          echo "Make sure $HOME/.local/bin is on your PATH."
+          EOF
+          chmod +x stage/chida-1.0.0-linux-x86_64/install.sh
+          tar -czf chida-1.0.0-linux-x86_64.tar.gz -C stage chida-1.0.0-linux-x86_64
+      - name: Install the wasm target and Trunk
+        run: |
+          rustup target add wasm32-unknown-unknown
+          cargo install trunk --locked
+      - name: Build the web editor
+        working-directory: apps/editor
+        run: trunk build --release
+      - name: Package the editor zip
+        run: |
+          mkdir -p editor-dist
+          cp -r apps/editor/dist/* editor-dist/
+          cd editor-dist && zip -r ../chida-editor-1.0.0.zip . && cd ..
+      - name: Checksums
+        run: sha256sum chida-1.0.0-linux-x86_64.tar.gz chida-editor-1.0.0.zip > SHA256SUMS
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            chida-1.0.0-linux-x86_64.tar.gz
+            chida-editor-1.0.0.zip
+            SHA256SUMS
+
+  fedora-rpm:
+    name: Fedora RPM
+    runs-on: ubuntu-latest
+    container: fedora:45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build tools
+        run: dnf -y install rust cargo rpm-build rpmdevtools git tar gzip
+      - name: Build the RPM
+        run: |
+          cargo build --release --locked
+          rpmdev-setuptree
+          mkdir -p /tmp/chida-1.0.0
+          cp -r . /tmp/chida-1.0.0/src
+          tar -czf ~/rpmbuild/SOURCES/chida-1.0.0.tar.gz -C /tmp chida-1.0.0
+          rpmbuild -ba packaging/fedora/chida.spec
+      - name: Upload RPM to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ~/rpmbuild/RPMS/**/*.rpm

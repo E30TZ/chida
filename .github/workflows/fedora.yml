@@ -1,0 +1,30 @@
+name: Fedora package
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  rpm:
+    name: Build RPM in a Fedora 45 container
+    runs-on: ubuntu-latest
+    container: fedora:45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build tools
+        run: dnf -y install rust cargo rpm-build rpmdevtools git
+      - name: Build the CLI
+        run: cargo build --release --locked
+      - name: Build the RPM
+        run: |
+          rpmdev-setuptree
+          mkdir -p /tmp/chida-1.0.0
+          cp -r . /tmp/chida-1.0.0/src
+          tar -czf ~/rpmbuild/SOURCES/chida-1.0.0.tar.gz -C /tmp chida-1.0.0
+          rpmbuild -ba packaging/fedora/chida.spec
+      - name: Upload RPM
+        uses: actions/upload-artifact@v4
+        with:
+          name: chida-fedora-rpm
+          path: ~/rpmbuild/RPMS/**/*.rpm
