@@ -56,6 +56,11 @@ render of the design or a complete Rust application you own.
   Tauri 2 desktop shell with a Leptos UI skeleton under `apps/desktop`
   (code complete; building it needs the WebKitGTK and GTK development
   libraries listed in `apps/desktop/README.md`).
+- Cross-platform release artifacts, built by CI from the release tag:
+  Linux x86_64 and aarch64 tarballs, an AppImage, a Debian package
+  (`.deb`), a Fedora RPM, a Windows x86_64 zip, macOS tarballs for Apple
+  Silicon and Intel, and the browser editor zip, all attached to one
+  GitHub release with a SHA256SUMS file.
 
 ### Known limitations
 

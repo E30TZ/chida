@@ -15,6 +15,30 @@ code.
 The screenshot above is real output: it was produced by running
 `chida new demo` and `chida render` with the code in this repository.
 
+## Download
+
+Release files are on the
+[releases page](https://github.com/E30TZ/chida/releases). Every file is
+built by CI from the release tag; the table lists the exact names for
+version 1.0.0.
+
+| Platform | File | What it is |
+| --- | --- | --- |
+| Linux, any distro (x86_64) | `chida-1.0.0-linux-x86_64.tar.gz` | Portable tarball with the `chida` binary, a desktop entry and `install.sh`, which installs into `~/.local/bin` |
+| Linux, any distro (x86_64) | `chida-1.0.0-linux-x86_64.AppImage` | Single file build of the CLI; no install, just make it executable and run it |
+| Debian, Ubuntu and derivatives | `chida_1.0.0_amd64.deb` | Debian package: installs `/usr/bin/chida`, the desktop entry and the icon |
+| Fedora, RHEL and derivatives | `chida-1.0.0-1.fc45.x86_64.rpm` | RPM built in a Fedora 45 container from `packaging/fedora/chida.spec` |
+| Linux, any distro (aarch64) | `chida-1.0.0-linux-aarch64.tar.gz` | Portable tarball for ARM64 machines, same layout as the x86_64 tarball |
+| Windows (x86_64) | `chida-1.0.0-windows-x86_64.zip` | Zip with `chida.exe`, the README and the license |
+| macOS, Apple Silicon | `chida-1.0.0-macos-aarch64.tar.gz` | Tarball with the `chida` binary, the README and the license |
+| macOS, Intel | `chida-1.0.0-macos-x86_64.tar.gz` | Tarball with the `chida` binary, the README and the license |
+| Any OS with a browser | `chida-editor-1.0.0.zip` | The web editor as static files (HTML, JS, WebAssembly); unzip and serve or open locally |
+
+A `SHA256SUMS` file is attached to each release so downloads can be
+verified. The Tauri desktop app under `apps/desktop` is not part of the
+1.0.0 downloads yet; there are no desktop app installers in this release,
+only the command line tool and the browser editor above.
+
 ## What works today
 
 * **Document model** (`chida-core`): pages, node trees, components, design
