@@ -1,0 +1,23 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/chida-core",
+    "crates/chida-render",
+    "crates/chida-db",
+    "crates/chida-logic",
+    "crates/chida-codegen",
+    "crates/chida-cli",
+]
+exclude = ["apps/desktop", "apps/desktop/ui", "apps/editor", "examples-output"]
+
+[workspace.package]
+version = "1.0.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/E30TZ/chida"
+rust-version = "1.85"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
