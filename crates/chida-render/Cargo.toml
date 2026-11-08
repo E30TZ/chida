@@ -1,0 +1,15 @@
+[package]
+name = "chida-render"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Raster (PNG) and vector (SVG) rendering of Chida pages"
+
+[dependencies]
+chida-core = { path = "../chida-core" }
+png = "0.18"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+serde = { version = "1.0", features = ["derive"] }
+fontdue = "0.9"
+rustybuzz = "0.20"
+unicode-bidi = "0.3"
