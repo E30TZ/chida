@@ -57,6 +57,7 @@
 -   [👀 See it](#-see-it)
 -   [✨ What you can do](#-what-you-can-do)
 -   [🚀 Try it now](#-try-it-now)
+-   [🔌 WordPress themes](#-wordpress-themes)
 -   [🛠️ For developers](#-for-developers)
 -   [📚 Documentation](#-documentation)
 -   [📄 License](#-license)
@@ -75,7 +76,7 @@ Say you want a small shop on the internet. With Chida you do three things:
 
 **3. You press one button.** Chida hands you back the whole shop: the pages you drew, a program that keeps the products and takes orders, and **all of its code**. The code is yours. Open it, change it, put it on the internet yourself. Nothing stays locked inside Chida.
 
-That is Chida. A drawing program whose drawings become real apps. It is written in Rust, it is fast and light, and Persian and Arabic text comes out right-to-left and correct in every result.
+That is Chida. A drawing program whose drawings become real apps. **Version 2** goes much deeper: real vector drawing, real components, real groups, smarter guides, stronger auto layout, richer color and effects, and clicks that do things. It is written in Rust, it is fast and light, and Persian and Arabic text comes out right-to-left and correct in every result.
 
 ---
 
@@ -108,7 +109,15 @@ Every picture here is real. Chida drew each one from a ready-made project with a
 **🎨 Draw pages that look real**
 - Pages, layers, rulers and snap guides, like a real design tool
 - Drag, resize, pick many things at once, draw a box to select
-- Boxes line themselves up in rows and columns (auto layout)
+- Draw your own shapes with the **pen**: click for corners, drag for curves, then move, add or delete points whenever you like
+- Ready shapes too: **polygon, star and arrow**, all drawn as real vector paths
+- Make a **component** once and drop copies anywhere. Change the master and every copy follows. Change one copy's words or color and only that copy changes. Detach a copy when you want it on its own
+- **Group** things and move or resize them as one; drag layers to reorder them and double-click a layer to rename it
+- Pull guides out of the ruler and snap to them; smart guides snap things into line and show the gap between them
+- Boxes line themselves up in rows and columns (auto layout): a box can **hug** what is inside it or **fill** its parent, padding can differ per side, and rows can wrap
+- Colors can fade through as many **gradient stops** as you like; **shadows can stack**; a thing, or what sits behind it, can blur
+- Say what a **click** does: go to another page or open a link. Hover works in the preview too
+- A whole shelf of ready **sections** to drop in: navbars, heroes, features, prices, customer words, galleries, forms, footers and calls to action
 - Save a look once and reuse it everywhere (named styles)
 - Bring your own pictures in
 - Press preview and click around: the page links really work
@@ -129,6 +138,11 @@ Every picture here is real. Chida drew each one from a ready-made project with a
 - The **Vazirmatn** font comes inside Chida
 - In a mixed line, numbers and English words stay in the right order
 
+**🔌 WordPress themes, in and out**
+- Already have a WordPress theme? Bring its **zip file** in: Chida opens it as pages you can edit (header, home, single post, page, footer)
+- The living parts stay alive: the post loop, the menu, titles, dates and content come back out as real WordPress code
+- Press one button and download the theme zip again, ready to install in WordPress
+
 </div>
 
 Every project starts from a ready-made one, so you never face an empty page: **shop**, **digikala** (the big Persian shop above), **persian**, **liquid-glass** (the glass page above), **saas-dashboard**, **clinic**, **restaurant**, **portfolio**, **blank**.
@@ -145,19 +159,19 @@ All files live on one page: the [download page](https://github.com/E30TZ/chida/r
 
 | Your computer | Take this file | Then what |
 | --- | --- | --- |
-| Windows | `chida-1.0.1-windows-x86_64.zip` | Unzip it, run `chida.exe` |
-| Mac with Apple Silicon | `chida-1.0.1-macos-aarch64.tar.gz` | Unzip it, run `chida` |
-| Mac with Intel | `chida-1.0.1-macos-x86_64.tar.gz` | Unzip it, run `chida` |
-| Linux, any distro | `chida-1.0.1-linux-x86_64.tar.gz` | Unzip it, run `chida`. No install |
-| Linux, one single file | `chida-1.0.1-linux-x86_64.AppImage` | Make it executable, double-click |
-| Debian or Ubuntu | `chida_1.0.1_amd64.deb` | Install it like any program |
-| Fedora or RHEL | `chida-1.0.1-1.fc45.x86_64.rpm` | Install it like any program |
-| Linux on ARM64 | `chida-1.0.1-linux-aarch64.tar.gz` | Unzip it, run `chida` |
-| Only the editor, in a browser | `chida-editor-1.0.1.zip` | Unzip it, open it (note below) |
+| Windows | `chida-2.0.0-windows-x86_64.zip` | Unzip it, run `chida.exe` |
+| Mac with Apple Silicon | `chida-2.0.0-macos-aarch64.tar.gz` | Unzip it, run `chida` |
+| Mac with Intel | `chida-2.0.0-macos-x86_64.tar.gz` | Unzip it, run `chida` |
+| Linux, any distro | `chida-2.0.0-linux-x86_64.tar.gz` | Unzip it, run `chida`. No install |
+| Linux, one single file | `chida-2.0.0-linux-x86_64.AppImage` | Make it executable, double-click |
+| Debian or Ubuntu | `chida_2.0.0_amd64.deb` | Install it like any program |
+| Fedora or RHEL | `chida-2.0.0-1.fc45.x86_64.rpm` | Install it like any program |
+| Linux on ARM64 | `chida-2.0.0-linux-aarch64.tar.gz` | Unzip it, run `chida` |
+| Only the editor, in a browser | `chida-editor-2.0.0.zip` | Unzip it, open it (note below) |
 
 The `SHA256SUMS` file on the same page lets you check your download arrived whole.
 
-**You want the editor in its own window, no terminal?** Take a desktop installer from the same page: `Chida_1.0.1_x64-setup.exe` (Windows), `Chida_1.0.1_x64.dmg` (Mac Intel), `Chida_1.0.1_aarch64.dmg` (Mac Apple Silicon), `Chida-desktop_1.0.1_amd64.deb` (Debian, Ubuntu), `Chida-desktop_1.0.1_amd64.AppImage` (any Linux), `Chida-1.0.1-1.x86_64.rpm` (Fedora, RHEL).
+**You want the editor in its own window, no terminal?** Take a desktop installer from the same page: `Chida_2.0.0_x64-setup.exe` (Windows), `Chida_2.0.0_x64.dmg` (Mac Intel), `Chida_2.0.0_aarch64.dmg` (Mac Apple Silicon), `Chida-desktop_2.0.0_amd64.deb` (Debian, Ubuntu), `Chida-desktop_2.0.0_amd64.AppImage` (any Linux), `Chida-2.0.0-1.x86_64.rpm` (Fedora, RHEL).
 
 ### Step 2: copy two lines
 
@@ -176,7 +190,7 @@ The first line makes a small shop project. The second line draws its pages as pi
 
 **🖼️ Open the folder** `myshop-pictures`. The pictures inside are your shop, drawn by Chida. That is the whole idea, working in your hands.
 
-**✏️ You would rather click than type?** Unzip `chida-editor-1.0.1.zip` and open the editor in your browser. If the page stays white, serve the folder with any small local web server: browsers do not load the editor straight from a file.
+**✏️ You would rather click than type?** Unzip `chida-editor-2.0.0.zip` and open the editor in your browser. If the page stays white, serve the folder with any small local web server: browsers do not load the editor straight from a file.
 
 **🗂️ One file is the whole project:** `myshop/myshop.chida.json` holds the pages, the tables and the rules. Move it, copy it, send it to a friend.
 
@@ -194,13 +208,34 @@ The first line makes a small shop project. The second line draws its pages as pi
 
 ---
 
+# 🔌 WordPress themes
+
+> **Your old theme is not a dead end**
+
+Chida reads WordPress themes and writes them back.
+
+**Bring a theme in.** On the editor start screen, pick **WordPress theme** and choose the theme zip file. The theme opens as pages: header, home, single post, page and footer. The colours, sizes and layout come from the theme's own style sheet.
+
+**Edit it like any Chida page.** Move boxes, change colours, fix the text. The parts that print your posts (the loop, the menu, titles, dates, featured pictures) are marked blocks on the page. Leave them where they are or move them around; they stay alive either way.
+
+**Take the theme back.** Press **WordPress export** in the top bar. You get a zip file holding a ready theme: `style.css`, `header.php`, `index.php`, `single.php`, `page.php`, `footer.php`, `functions.php`. Install it in WordPress like any other theme.
+
+The same works from the command line:
+
+```bash
+./chida wp-import mytheme.zip mytheme.chida.json
+./chida wp-export mytheme.chida.json mytheme-back.zip
+```
+
+---
+
 # 🛠️ For developers
 
 Chida itself is a Rust workspace. A project is one JSON file (`name.chida.json`). The renderer shapes text with HarfBuzz (rustybuzz) and rasterises with fontdue. The app Chida writes for you is an Axum backend with one CRUD route set per table plus sign-up and login, a Leptos frontend with one component per page, the SQL schema, an OpenAPI 3 file, a static HTML preview, a Dockerfile and a systemd unit.
 
 ```bash
 cargo build --release   # build Chida itself
-cargo test              # 73 tests
+cargo test              # 89 tests
 ```
 
 ```text
@@ -209,6 +244,7 @@ crates/chida-render   PNG and SVG drawing
 crates/chida-db       tables, rules, SQL writing
 crates/chida-logic    the flow engine (if this, then that)
 crates/chida-codegen  writes the whole app for you
+crates/chida-wp       WordPress themes in and out
 crates/chida-cli      the chida command
 apps/editor           the editor in the picture above (Leptos, WebAssembly)
 apps/desktop          the editor in a desktop window (Tauri 2)

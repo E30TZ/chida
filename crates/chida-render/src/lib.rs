@@ -124,7 +124,96 @@ fn rounded_rect_coverage(px: f32, py: f32, x: f32, y: f32, w: f32, h: f32, r: f3
     (0.5 - dist).clamp(0.0, 1.0)
 }
 
+fn point_in_polygon(px: f32, py: f32, points: &[(f32, f32)]) -> bool {
+    if points.len() < 3 {
+        return false;
+    }
+    let mut inside = false;
+    let mut j = points.len() - 1;
+    for i in 0..points.len() {
+        let (xi, yi) = points[i];
+        let (xj, yj) = points[j];
+        if (yi > py) != (yj > py) {
+            let x_at = xi + (py - yi) * (xj - xi) / (yj - yi);
+            if px < x_at {
+                inside = !inside;
+            }
+        }
+        j = i;
+    }
+    inside
+}
+
+fn distance_to_segment(px: f32, py: f32, a: (f32, f32), b: (f32, f32)) -> f32 {
+    let (dx, dy) = (b.0 - a.0, b.1 - a.1);
+    let len2 = dx * dx + dy * dy;
+    let t = if len2 <= f32::EPSILON {
+        0.0
+    } else {
+        (((px - a.0) * dx + (py - a.1) * dy) / len2).clamp(0.0, 1.0)
+    };
+    let (qx, qy) = (a.0 + dx * t, a.1 + dy * t);
+    ((px - qx).powi(2) + (py - qy).powi(2)).sqrt()
+}
+
+fn arrow_geometry(node: &Node, x: f32, y: f32) -> Option<((f32, f32), (f32, f32), Vec<(f32, f32)>)> {
+    if node.path_points.len() < 2 {
+        return None;
+    }
+    let start = (x + node.path_points[0].x, y + node.path_points[0].y);
+    let end = (x + node.path_points[1].x, y + node.path_points[1].y);
+    let (dx, dy) = (end.0 - start.0, end.1 - start.1);
+    let len = (dx * dx + dy * dy).sqrt();
+    if len <= 0.0 {
+        return None;
+    }
+    let unit = (dx / len, dy / len);
+    let normal = (-unit.1, unit.0);
+    let head_len = (len * 0.32).clamp(8.0, 22.0);
+    let head_half = (node.stroke_width.max(1.5) * 3.0).clamp(5.0, 14.0);
+    let base = (end.0 - unit.0 * head_len, end.1 - unit.1 * head_len);
+    let head = vec![
+        (base.0 + normal.0 * head_half, base.1 + normal.1 * head_half),
+        end,
+        (base.0 - normal.0 * head_half, base.1 - normal.1 * head_half),
+    ];
+    Some((start, end, head))
+}
+
+fn path_fill_coverage(node: &Node, px: f32, py: f32, x: f32, y: f32) -> f32 {
+    if node.kind == NodeKind::Arrow {
+        if let Some((start, end, head)) = arrow_geometry(node, x, y) {
+            let half = node.stroke_width.max(1.5) / 2.0;
+            if distance_to_segment(px, py, start, end) <= half || point_in_polygon(px, py, &head) {
+                return 1.0;
+            }
+        }
+        return 0.0;
+    }
+    if node.kind != NodeKind::Path {
+        return 0.0;
+    }
+    let points = node.flattened_path(x, y);
+    if node.path_closed && point_in_polygon(px, py, &points) {
+        return 1.0;
+    }
+    if node.stroke_width > 0.0 && node.stroke.is_some() {
+        let half = node.stroke_width / 2.0;
+        let mut best = f32::INFINITY;
+        for pair in points.windows(2) {
+            best = best.min(distance_to_segment(px, py, pair[0], pair[1]));
+        }
+        if best <= half {
+            return (half + 0.5 - best).clamp(0.0, 1.0);
+        }
+    }
+    0.0
+}
+
 fn coverage_for(node: &Node, px: f32, py: f32, x: f32, y: f32) -> f32 {
+    if matches!(node.kind, NodeKind::Path | NodeKind::Arrow) {
+        return path_fill_coverage(node, px, py, x, y);
+    }
     if node.kind == NodeKind::Ellipse {
         let (cx, cy) = (x + node.width / 2.0, y + node.height / 2.0);
         let (rx, ry) = (node.width / 2.0, node.height / 2.0);
@@ -191,7 +280,10 @@ fn paint_shadow(canvas: &mut Canvas, node: &Node, ox: f32, oy: f32, shadow: &Sha
     for py in y0..y1 {
         for px in x0..x1 {
             let (cx, cy) = (px as f32 + 0.5, py as f32 + 0.5);
-            let cov = if node.kind == NodeKind::Ellipse {
+            let base_cov = coverage_for(node, cx, cy, x, y);
+            let cov = if matches!(node.kind, NodeKind::Path | NodeKind::Arrow) {
+                base_cov
+            } else if node.kind == NodeKind::Ellipse {
                 let (ex, ey) = (x + node.width / 2.0, y + node.height / 2.0);
                 let (rx, ry) = (node.width / 2.0, node.height / 2.0);
                 if rx <= 0.0 || ry <= 0.0 {
@@ -260,6 +352,11 @@ fn stroke_shape(canvas: &mut Canvas, node: &Node, ox: f32, oy: f32) {
     };
     let sw = node.stroke_width;
     let (x, y) = (ox + node.x, oy + node.y);
+    if matches!(node.kind, NodeKind::Path | NodeKind::Arrow) {
+        // Fill coverage already paints the outline for paths; the
+        // generic rounded-rect stroke below would add a false box.
+        return;
+    }
     let x0 = (x - sw).floor() as i32;
     let y0 = (y - sw).floor() as i32;
     let x1 = (x + node.width + sw).ceil() as i32;
@@ -551,7 +648,7 @@ fn paint_node(canvas: &mut Canvas, node: &Node, ox: f32, oy: f32) {
         return;
     }
     let (ax, ay) = (ox + node.x, oy + node.y);
-    if let Some(shadow) = &node.shadow {
+    for shadow in node.shadows.iter().filter(|s| s.enabled).rev() {
         paint_shadow(canvas, node, ox, oy, shadow);
     }
     if let Some(gradient) = &node.fill_gradient {
@@ -693,25 +790,31 @@ fn svg_node(node: &Node, ox: f32, oy: f32, out: &mut String) {
             .map(|c| if c.is_alphanumeric() { c } else { '-' })
             .collect();
         let (dx, dy) = g.direction();
+        let stops = g
+            .stops()
+            .iter()
+            .map(|stop| format!("<stop offset=\"{}\" stop-color=\"{}\"/>", stop.offset, stop.color.to_hex()))
+            .collect::<Vec<_>>()
+            .join("");
         out.push_str(&format!(
-            "<defs><linearGradient id=\"grad-{gid}\" x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\"><stop offset=\"0\" stop-color=\"{}\"/><stop offset=\"1\" stop-color=\"{}\"/></linearGradient></defs>",
+            "<defs><linearGradient id=\"grad-{gid}\" x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\">{stops}</linearGradient></defs>",
             0.5 - dx / 2.0,
             0.5 - dy / 2.0,
             0.5 + dx / 2.0,
-            0.5 + dy / 2.0,
-            g.from.to_hex(),
-            g.to.to_hex()
+            0.5 + dy / 2.0
         ));
         Some(format!("url(#grad-{gid})"))
     } else {
         node.fill.map(|f| f.to_hex())
     };
-    let svg_shadow = node
-        .shadow
+    let mut shadow_filters: Vec<String> = node
+        .shadows
+        .iter()
+        .filter(|s| s.enabled)
         .map(|s| {
             let a = (s.color.a as f32 / 255.0) * s.opacity.clamp(0.0, 1.0);
             format!(
-                " style=\"filter:drop-shadow({}px {}px {}px rgba({},{},{},{:.3}))\"",
+                "drop-shadow({}px {}px {}px rgba({},{},{},{:.3}))",
                 s.x,
                 s.y,
                 (s.blur / 2.0).max(0.0),
@@ -721,8 +824,62 @@ fn svg_node(node: &Node, ox: f32, oy: f32, out: &mut String) {
                 a
             )
         })
-        .unwrap_or_default();
-    if let Some(fill) = svg_fill {
+        .collect();
+    if node.blur_radius > 0.0 {
+        shadow_filters.push(format!("blur({}px)", node.blur_radius));
+    }
+    let svg_shadow = if shadow_filters.is_empty() {
+        String::new()
+    } else {
+        format!(" style=\"filter:{}\"", shadow_filters.join(" "))
+    };
+    if matches!(node.kind, NodeKind::Path | NodeKind::Arrow) {
+        let fill_attr = svg_fill.clone().unwrap_or_else(|| "none".to_string());
+        let stroke_attr = node
+            .stroke
+            .map(|c| c.to_hex())
+            .unwrap_or_else(|| fill_attr.clone());
+        let stroke_width = if node.kind == NodeKind::Arrow {
+            node.stroke_width.max(1.5)
+        } else {
+            node.stroke_width
+        };
+        if node.kind == NodeKind::Arrow {
+            if let Some((start, end, head)) = arrow_geometry(node, x, y) {
+                out.push_str(&format!(
+                    "<path d=\"M {} {} L {} {}\" fill=\"none\" stroke=\"{}\" stroke-width=\"{}\"{} {} /><path d=\"M {} {} L {} {} L {} {} Z\" fill=\"{}\"{} {} />",
+                    start.0,
+                    start.1,
+                    end.0,
+                    end.1,
+                    stroke_attr,
+                    stroke_width,
+                    op,
+                    svg_shadow,
+                    head[0].0,
+                    head[0].1,
+                    head[1].0,
+                    head[1].1,
+                    head[2].0,
+                    head[2].1,
+                    stroke_attr,
+                    op,
+                    svg_shadow
+                ));
+            }
+        } else {
+            out.push_str(&format!(
+                "<path d=\"{}\" fill=\"{}\" stroke=\"{}\" stroke-width=\"{}\"{} {} />",
+                node.path_d(x, y),
+                fill_attr,
+                stroke_attr,
+                stroke_width,
+                op,
+                svg_shadow
+            ));
+        }
+    }
+    if let Some(fill) = svg_fill.filter(|_| !matches!(node.kind, NodeKind::Path | NodeKind::Arrow)) {
         if node.kind == NodeKind::Ellipse {
             out.push_str(&format!(
                 "<ellipse cx=\"{}\" cy=\"{}\" rx=\"{}\" ry=\"{}\" fill=\"{}\"{} {} />",
@@ -1080,13 +1237,14 @@ mod tests {
         use chida_core::Shadow;
         let mut pg = Page::new("s", "S", "/s", 200.0, 160.0);
         let mut n = Node::rect("r", "R", 40.0, 30.0, 80.0, 50.0, Color::WHITE);
-        n.shadow = Some(Shadow {
+        n.shadows = vec![Shadow {
             x: 0.0,
             y: 14.0,
             blur: 10.0,
             color: Color::BLACK,
             opacity: 0.5,
-        });
+        enabled: true,
+        }];
         pg.root.children.push(n);
         let c = render_page(&pg, 1.0);
         // Just under the white rect, the shadow must darken the page.

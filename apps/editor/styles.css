@@ -434,3 +434,45 @@ select { cursor:pointer; }
   position: absolute; border: 1.5px dashed #0d99ff;
   background: rgba(13, 153, 255, 0.10); pointer-events: none; z-index: 60;
 }
+
+/* ---- v2 additions ---- */
+.page-guide { position: absolute; background: rgba(13, 153, 255, 0.55); z-index: 30; cursor: grab; pointer-events: auto; }
+.page-guide.selected-guide { background: #0d99ff; box-shadow: 0 0 0 1px #fff; }
+.spacing-label { position: absolute; transform: translate(-50%, -50%); background: #ff2fb3; color: #fff; font-size: 10px; padding: 1px 5px; border-radius: 4px; z-index: 40; pointer-events: none; white-space: nowrap; }
+.pen-overlay { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 35; }
+.pen-overlay .pen-line { fill: none; stroke: #0d99ff; stroke-width: 2; }
+.pen-overlay .pen-cur { stroke: #0d99ff; stroke-width: 1; stroke-dasharray: 4 3; }
+.pen-overlay .pen-anchor { fill: #fff; stroke: #0d99ff; stroke-width: 2; }
+.pen-overlay .pen-anchor.first { fill: #0d99ff; }
+.node-svg { position: absolute; inset: 0; display: block; pointer-events: none; }
+.node-svg svg { display: block; width: 100%; height: 100%; }
+.link-badge { position: absolute; top: -8px; inset-inline-start: -8px; font-size: 11px; background: #0d99ff; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; z-index: 5; pointer-events: none; }
+.path-edit-layer { position: absolute; inset: 0; z-index: 36; pointer-events: none; }
+.path-anchor { position: absolute; width: 11px; height: 11px; margin: -6px 0 0 -6px; background: #fff; border: 2px solid #0d99ff; border-radius: 50%; cursor: move; pointer-events: auto; z-index: 37; }
+.path-anchor.sel { background: #0d99ff; }
+.path-handle { position: absolute; width: 8px; height: 8px; margin: -4px 0 0 -4px; background: #fff; border: 1.5px solid #ff2fb3; border-radius: 50%; cursor: move; pointer-events: auto; z-index: 37; }
+.path-seg { position: absolute; height: 12px; margin-top: -6px; background: transparent; cursor: copy; pointer-events: auto; z-index: 36; }
+.path-seg:hover { background: rgba(13, 153, 255, 0.15); }
+.master-banner { display: flex; gap: 12px; align-items: center; background: #7c3aed; color: #fff; padding: 6px 12px; font-size: 13px; z-index: 60; }
+.master-banner button { background: #fff; color: #7c3aed; border: 0; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-weight: 700; }
+.masters-box { border-bottom: 1px solid var(--line, #333); padding-bottom: 10px; margin-bottom: 10px; }
+.master-row { display: flex; align-items: center; gap: 6px; padding: 4px 0; }
+.master-name { flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.comp-create { width: 100%; margin: 6px 0; padding: 7px; border-radius: 8px; border: 1px dashed #7c3aed; background: transparent; color: inherit; cursor: pointer; }
+.comp-create:disabled { opacity: 0.45; cursor: default; }
+.cat-title { margin: 8px 0 4px; font-size: 13px; }
+.cat-head { margin: 10px 0 4px; font-size: 12px; opacity: 0.75; }
+.grad-bar { position: relative; height: 26px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.25); cursor: copy; margin: 6px 0; }
+.grad-stop { position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,0.4); transform: translate(-50%, -50%); cursor: pointer; padding: 0; }
+.grad-stop.sel { box-shadow: 0 0 0 2px #0d99ff; }
+.shadow-row { border: 1px solid rgba(128,128,128,0.35); border-radius: 8px; padding: 6px 8px; margin: 6px 0; }
+.inter-row { display: flex; align-items: center; gap: 6px; padding: 4px 0; font-size: 12px; }
+.inter-row span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.align9 { display: inline-block; margin: 6px 0; }
+.align9-row { display: flex; }
+.align9-cell { width: 26px; height: 22px; font-size: 10px; padding: 0; }
+.align9-cell.on { background: #0d99ff; color: #fff; }
+.layer-rename { flex: 1; min-width: 60px; font-size: 12px; padding: 2px 4px; }
+.ruler-x, .ruler-y { cursor: copy; }
+.workspace, .rail, .ruler-x, .ruler-y, .artboard { user-select: none; -webkit-user-select: none; }
+.artboard img { -webkit-user-drag: none; }

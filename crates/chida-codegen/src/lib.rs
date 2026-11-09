@@ -277,25 +277,133 @@ pub async fn login(State(state): Shared, Json(c): Json<Credentials>) -> (StatusC
 }
 "#;
 
-fn node_to_leptos(node: &Node, indent: usize) -> String {
-    let pad = " ".repeat(indent);
-    let style = format!(
-        "position:absolute;left:{}px;top:{}px;width:{}px;height:{}px;border-radius:{}px;{}",
-        node.x,
-        node.y,
+pub fn interaction_href(node: &Node, trigger: &str) -> Option<String> {
+    let raw = node.props.get("interactions")?;
+    for line in raw.lines() {
+        let mut parts = line.splitn(3, '|');
+        if parts.next() == Some(trigger) {
+            let kind = parts.next()?;
+            let target = parts.next()?;
+            return Some(match kind {
+                "page" => format!("#{}", route_anchor(target)),
+                "url" => target.to_string(),
+                _ => continue,
+            });
+        }
+    }
+    None
+}
+
+pub fn route_anchor(route: &str) -> String {
+    let cleaned: String = route
+        .chars()
+        .map(|c| if c.is_alphanumeric() { c } else { '-' })
+        .collect();
+    format!("route-{}", cleaned.trim_matches('-'))
+}
+
+fn shadow_css(node: &Node) -> String {
+    if !node.shadows.iter().any(|s| s.enabled) {
+        return String::new();
+    }
+    let parts: Vec<String> = node
+        .shadows
+        .iter()
+        .filter(|s| s.enabled)
+        .map(|s| {
+            let a = (s.color.a as f32 / 255.0) * s.opacity.clamp(0.0, 1.0);
+            format!(
+                "{}px {}px {}px rgba({},{},{},{:.3})",
+                s.x, s.y, s.blur, s.color.r, s.color.g, s.color.b, a
+            )
+        })
+        .collect();
+    format!("box-shadow:{};", parts.join(","))
+}
+
+fn node_style(node: &Node) -> String {
+    let mut style = format!(
+        "position:absolute;left:{}px;top:{}px;width:{}px;height:{}px;border-radius:{}px;",
+        node.x, node.y, node.width, node.height, node.corner_radius
+    );
+    if let Some(g) = &node.fill_gradient {
+        style.push_str(&format!("background:{};", g.css()));
+    } else if let Some(c) = node.fill {
+        style.push_str(&format!("background:{};", c.to_hex()));
+    }
+    if let Some(c) = node.stroke {
+        if node.stroke_width > 0.0 {
+            style.push_str(&format!("border:{}px solid {};", node.stroke_width, c.to_hex()));
+        }
+    }
+    style.push_str(&shadow_css(node));
+    if node.opacity < 1.0 {
+        style.push_str(&format!("opacity:{};", node.opacity));
+    }
+    if node.blur_radius > 0.0 {
+        style.push_str(&format!("filter:blur({}px);", node.blur_radius));
+    }
+    if node.background_blur > 0.0 {
+        style.push_str(&format!(
+            "backdrop-filter:blur({}px);-webkit-backdrop-filter:blur({}px);",
+            node.background_blur, node.background_blur
+        ));
+    }
+    style
+}
+
+fn node_svg_inner(node: &Node) -> Option<String> {
+    if !matches!(node.kind, NodeKind::Path | NodeKind::Arrow) {
+        return None;
+    }
+    let fill = node.fill.map(|c| c.to_hex()).unwrap_or_else(|| "none".into());
+    let stroke = node
+        .stroke
+        .map(|c| c.to_hex())
+        .unwrap_or_else(|| fill.clone());
+    if node.kind == NodeKind::Arrow {
+        let head = node.arrow_head_points()?;
+        let start = node.path_points.first()?;
+        let end = node.path_points.get(1)?;
+        return Some(format!(
+            "<svg viewBox=\"0 0 {} {}\" width=\"100%\" height=\"100%\"><path d=\"M {} {} L {} {}\" fill=\"none\" stroke=\"{}\" stroke-width=\"{}\"/><path d=\"M {} {} L {} {} L {} {} Z\" fill=\"{}\"/></svg>",
+            node.width,
+            node.height,
+            start.x,
+            start.y,
+            end.x,
+            end.y,
+            stroke,
+            node.stroke_width.max(1.5),
+            head[0].0,
+            head[0].1,
+            head[1].0,
+            head[1].1,
+            head[2].0,
+            head[2].1,
+            stroke
+        ));
+    }
+    Some(format!(
+        "<svg viewBox=\"0 0 {} {}\" width=\"100%\" height=\"100%\"><path d=\"{}\" fill=\"{}\" stroke=\"{}\" stroke-width=\"{}\"/></svg>",
         node.width,
         node.height,
-        node.corner_radius,
-        node.fill
-            .map(|c| format!("background:{};", c.to_hex()))
-            .unwrap_or_default()
-    );
+        node.path_d(0.0, 0.0),
+        fill,
+        stroke,
+        node.stroke_width
+    ))
+}
+
+fn node_to_leptos(node: &Node, indent: usize) -> String {
+    let pad = " ".repeat(indent);
+    let style = node_style(node);
     let text = node.text.as_deref().unwrap_or("");
     let mut children = String::new();
     for ch in &node.children {
         children.push_str(&node_to_leptos(ch, indent + 4));
     }
-    match node.kind {
+    let rendered = match node.kind {
         NodeKind::Button => format!(
             "{pad}<button style=\"{style}\">{}{}</button>\n",
             html_esc(text),
@@ -316,19 +424,32 @@ fn node_to_leptos(node: &Node, indent: usize) -> String {
             node.font_size,
             html_esc(text)
         ),
+        NodeKind::Path | NodeKind::Arrow => format!(
+            "{pad}<div style=\"{style}\">{}</div>\n",
+            node_svg_inner(node).unwrap_or_default()
+        ),
         _ => format!(
             "{pad}<div style=\"{style}\">{}{}</div>\n",
             html_esc(text),
             children
         ),
+    };
+    match interaction_href(node, "click") {
+        Some(href) => format!(
+            "{pad}<a href=\"{}\" style=\"display:contents;\">{}</a>",
+            html_esc(&href),
+            rendered.trim_start()
+        ),
+        None => rendered,
     }
 }
 
 fn frontend_app_rs(project: &Project) -> String {
     let mut s = String::from("use leptos::prelude::*;\n\n#[component]\npub fn App() -> impl IntoView {\n    view! {\n        <main class=\"chida-app\">\n");
     for page in &project.pages {
-        s.push_str(&format!("            <section data-route=\"{}\" style=\"position:relative;width:{}px;height:{}px;\">\n", page.route, page.width, page.height));
-        for child in &page.root.children {
+        let resolved = project.resolve_page(page);
+        s.push_str(&format!("            <section id=\"{}\" data-route=\"{}\" style=\"position:relative;width:{}px;height:{}px;\">\n", route_anchor(&page.route), page.route, page.width, page.height));
+        for child in &resolved.root.children {
             s.push_str(&node_to_leptos(child, 16));
         }
         s.push_str("            </section>\n");
@@ -339,27 +460,26 @@ fn frontend_app_rs(project: &Project) -> String {
 
 fn static_preview(project: &Project) -> String {
     fn node_html(node: &Node) -> String {
-        let style = format!(
-            "position:absolute;left:{}px;top:{}px;width:{}px;height:{}px;border-radius:{}px;{}",
-            node.x,
-            node.y,
-            node.width,
-            node.height,
-            node.corner_radius,
-            node.fill
-                .map(|c| format!("background:{};", c.to_hex()))
-                .unwrap_or_default()
-        );
-        let mut inner = html_esc(node.text.as_deref().unwrap_or(""));
+        let style = node_style(node);
+        let mut inner = if matches!(node.kind, NodeKind::Path | NodeKind::Arrow) {
+            node_svg_inner(node).unwrap_or_default()
+        } else {
+            html_esc(node.text.as_deref().unwrap_or(""))
+        };
         for ch in &node.children {
             inner.push_str(&node_html(ch));
         }
-        format!("<div style=\"{style}\">{inner}</div>")
+        let div = format!("<div style=\"{style}\">{inner}</div>");
+        match interaction_href(node, "click") {
+            Some(href) => format!("<a href=\"{}\">{div}</a>", html_esc(&href)),
+            None => div,
+        }
     }
     let mut sections = String::new();
     for page in &project.pages {
+        let resolved = project.resolve_page(page);
         let mut body = String::new();
-        for child in &page.root.children {
+        for child in &resolved.root.children {
             body.push_str(&node_html(child));
         }
         let _ = write!(sections, "<h2>{} <small>{}</small></h2><div style=\"position:relative;width:{}px;height:{}px;background:{};border:1px solid #ddd;\">{}</div>",

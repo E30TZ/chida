@@ -1,0 +1,67 @@
+/*
+Theme Name: Fixture Blog
+Theme URI: https://example.com/fixture-blog
+Author: Chida Tests
+Description: A small real theme used by the chida-wp test suite.
+Version: 1.0.0
+Text Domain: fixture-blog
+*/
+
+body {
+  margin: 0;
+  font-size: 16px;
+  color: #222222;
+  background: #ffffff;
+}
+
+.site-header {
+  background: #14342b;
+  padding: 20px;
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+}
+
+.site-title {
+  color: #ffffff;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.main-nav a {
+  color: #ffffff;
+}
+
+.wrap {
+  padding: 24px;
+}
+
+.post-card {
+  background: #f4f4f4;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.post-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #14342b;
+}
+
+.post-meta {
+  color: #666666;
+  font-size: 13px;
+}
+
+.btn {
+  background: #e63946;
+  color: #ffffff;
+  border-radius: 8px;
+}
+
+.site-footer {
+  background: #14342b;
+  color: #ffffff;
+  padding: 16px;
+  text-align: center;
+}

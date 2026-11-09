@@ -1,0 +1,13 @@
+[package]
+name = "chida-wp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "WordPress theme import and export for Chida: theme zip to project and back"
+
+[dependencies]
+chida-core = { path = "../chida-core" }
+# The zip crate with only the pure Rust deflate backend enabled:
+# no C dependencies, so the crate builds for wasm32 (the editor)
+# as well as natively (the CLI). Stored entries also work.
+zip = { version = "9", default-features = false, features = ["deflate-flate2-zlib-rs"] }

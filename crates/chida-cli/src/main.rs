@@ -86,6 +86,8 @@ fn cmd_render(args: &[String]) -> Result<(), String> {
         .unwrap_or_else(|| PathBuf::from("render-out"));
     std::fs::create_dir_all(&out_dir).map_err(|e| e.to_string())?;
     for page in &file.project.pages {
+        let resolved_page = file.project.resolve_page(page);
+        let page = &resolved_page;
         let slug = if page.route == "/" {
             "home".to_string()
         } else {
@@ -179,6 +181,74 @@ fn cmd_info(args: &[String]) -> Result<(), String> {
     Ok(())
 }
 
+fn cmd_wp_import(args: &[String]) -> Result<(), String> {
+    let input = positional(args, 0)
+        .ok_or("usage: chida wp-import <theme.zip | theme-dir> <out.chida.json>")?;
+    let output = positional(args, 1)
+        .ok_or("usage: chida wp-import <theme.zip | theme-dir> <out.chida.json>")?;
+    let input_path = Path::new(&input);
+    let files: chida_wp::ThemeFiles = if input_path.is_dir() {
+        let mut map = chida_wp::ThemeFiles::new();
+        collect_dir(input_path, input_path, &mut map).map_err(|e| e.to_string())?;
+        map
+    } else {
+        let bytes = std::fs::read(input_path).map_err(|e| e.to_string())?;
+        chida_wp::read_zip(&bytes)?
+    };
+    let imported = chida_wp::import_theme(&files)?;
+    let file = ProjectFile {
+        project: imported.project,
+        database: chida_db::Database::default(),
+        flows: Vec::new(),
+    };
+    file.save(Path::new(&output)).map_err(|e| e.to_string())?;
+    let s = &imported.summary;
+    println!(
+        "Imported WordPress theme into {} ({} pages, {} elements, {} dynamic blocks, {} PHP blocks dropped)",
+        output, s.pages, s.elements, s.dynamic_blocks, s.dropped_php
+    );
+    Ok(())
+}
+
+/// Recursively collect a theme directory into the flat file map.
+fn collect_dir(
+    base: &Path,
+    dir: &Path,
+    out: &mut chida_wp::ThemeFiles,
+) -> std::io::Result<()> {
+    for entry in std::fs::read_dir(dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_dir() {
+            collect_dir(base, &path, out)?;
+        } else if let Ok(rel) = path.strip_prefix(base) {
+            let key = rel.to_string_lossy().replace('\\', "/");
+            out.insert(key, std::fs::read(&path)?);
+        }
+    }
+    Ok(())
+}
+
+fn cmd_wp_export(args: &[String]) -> Result<(), String> {
+    let input = positional(args, 0)
+        .ok_or("usage: chida wp-export <project.chida.json> <out-theme.zip>")?;
+    let output = positional(args, 1)
+        .ok_or("usage: chida wp-export <project.chida.json> <out-theme.zip>")?;
+    let file = ProjectFile::load(Path::new(&input)).map_err(|e| e.to_string())?;
+    let theme_files = chida_wp::export_theme(&file.project);
+    let zip = chida_wp::write_zip(&theme_files)?;
+    std::fs::write(&output, &zip).map_err(|e| e.to_string())?;
+    println!(
+        "Exported WordPress theme to {} ({} files)",
+        output,
+        theme_files.len()
+    );
+    for name in theme_files.keys() {
+        println!("  {name}");
+    }
+    Ok(())
+}
+
 fn cmd_templates() -> Result<(), String> {
     println!("Available templates:");
     println!("  shop          Starter plant shop: storefront, admin, products and orders, one checkout flow");
@@ -198,7 +268,7 @@ fn cmd_templates() -> Result<(), String> {
 const USAGE: &str = concat!(
     "Chida ",
     env!("CARGO_PKG_VERSION"),
-    ", a visual full-stack builder\n\nUsage:\n  chida new <name> [--template shop|blank|persian|digikala|liquid-glass|saas-dashboard|clinic|restaurant|portfolio] [--out <dir>]\n  chida templates\n  chida render <project.chida.json> [--out <dir>]\n  chida generate <project.chida.json> [--out <dir>]\n  chida info <project.chida.json>\n  chida --help"
+    ", a visual full-stack builder\n\nUsage:\n  chida new <name> [--template shop|blank|persian|digikala|liquid-glass|saas-dashboard|clinic|restaurant|portfolio] [--out <dir>]\n  chida templates\n  chida render <project.chida.json> [--out <dir>]\n  chida generate <project.chida.json> [--out <dir>]\n  chida info <project.chida.json>\n  chida wp-import <theme.zip | theme-dir> <out.chida.json>\n  chida wp-export <project.chida.json> <out-theme.zip>\n  chida --help"
 );
 
 fn main() -> ExitCode {
@@ -214,6 +284,8 @@ fn main() -> ExitCode {
         "render" => cmd_render(rest),
         "generate" => cmd_generate(rest),
         "info" => cmd_info(rest),
+        "wp-import" => cmd_wp_import(rest),
+        "wp-export" => cmd_wp_export(rest),
         "--help" | "-h" | "help" => {
             println!("{USAGE}");
             Ok(())
