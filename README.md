@@ -39,11 +39,11 @@
 
 <p align="center">
   <a href="https://github.com/E30TZ/chida" target="_blank" rel="noopener noreferrer" >
-    <img src="docs/shots/editor.png" alt="The Chida editor: pages on the left, the drawing in the middle, settings on the right" width="880" height="auto">
+    <img src="docs/shots/hero.png" alt="The Chida editor" width="880" height="auto">
   </a>
 </p>
 
-<p align="center"><i>This is the editor. You draw on the left and in the middle. Everything else on this page comes out of drawings like this one.</i></p>
+<p align="center"><i>This is the editor itself. You draw here; Chida builds the rest.</i></p>
 
 ## 📋 Table of Contents
 
@@ -82,29 +82,17 @@ That is Chida. A drawing program whose drawings become real apps. It is written 
 
 Every picture here is real. Chida drew each one from a ready-made project with a single command. None of them is a painting made for this page. The command is written under each picture, so you can make the same picture yourself.
 
-**A big Persian shop, reading right to left** · `chida new shop2 --template digikala`
-
-![Marketplace home](docs/shots/digikala-home.png)
-
-**A Persian page, simple and clean** · `chida new fa --template persian`
-
-![Persian page](docs/shots/persian.png)
-
-**A page that looks like frosted glass** · `chida new glassy --template liquid-glass`
-
-![Liquid glass page](docs/shots/liquid-glass-home.png)
-
-**The same page, on a phone**
-
-![Liquid glass phone page](docs/shots/liquid-glass-mobile.png)
-
-**A control panel for the shop owner** · `chida new panel --template saas-dashboard`
-
-![Dashboard](docs/shots/saas-dashboard.png)
-
-**A small shop** · `chida new demo`
-
-![Demo shop](docs/shots/demo-shop.png)
+|  |  |
+| :---: | :---: |
+| ![Big Persian shop](docs/shots/shot-shop.png) | ![Persian page](docs/shots/shot-fa.png) |
+| **A big Persian shop, reading right to left** | **A Persian page, simple and clean** |
+| `chida new shop2 --template digikala` | `chida new fa --template persian` |
+| ![Liquid glass page](docs/shots/shot-glass.png) | ![The same page on a phone](docs/shots/shot-mobile.png) |
+| **A page that looks like frosted glass** | **The same page, on a phone** |
+| `chida new glassy --template liquid-glass` |  |
+| ![Dashboard](docs/shots/shot-panel.png) | ![Demo shop](docs/shots/shot-demo.png) |
+| **A control panel for the shop owner** | **A small shop** |
+| `chida new panel --template saas-dashboard` | `chida new demo` |
 
 ---
 
