@@ -1,6 +1,6 @@
 [package]
 name = "chida-desktop"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 description = "Chida desktop app for Fedora (Tauri 2 shell, Leptos UI)"
 license = "MIT"
