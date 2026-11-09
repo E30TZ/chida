@@ -195,7 +195,11 @@ fn cmd_templates() -> Result<(), String> {
     Ok(())
 }
 
-const USAGE: &str = "Chida 1.0.0, a visual full-stack builder\n\nUsage:\n  chida new <name> [--template shop|blank|persian|digikala|liquid-glass|saas-dashboard|clinic|restaurant|portfolio] [--out <dir>]\n  chida templates\n  chida render <project.chida.json> [--out <dir>]\n  chida generate <project.chida.json> [--out <dir>]\n  chida info <project.chida.json>\n  chida --help";
+const USAGE: &str = concat!(
+    "Chida ",
+    env!("CARGO_PKG_VERSION"),
+    ", a visual full-stack builder\n\nUsage:\n  chida new <name> [--template shop|blank|persian|digikala|liquid-glass|saas-dashboard|clinic|restaurant|portfolio] [--out <dir>]\n  chida templates\n  chida render <project.chida.json> [--out <dir>]\n  chida generate <project.chida.json> [--out <dir>]\n  chida info <project.chida.json>\n  chida --help"
+);
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -215,7 +219,7 @@ fn main() -> ExitCode {
             Ok(())
         }
         "--version" | "-V" => {
-            println!("chida 1.0.0");
+            println!("chida {}", env!("CARGO_PKG_VERSION"));
             Ok(())
         }
         other => Err(format!("unknown command: {other}\n\n{USAGE}")),
