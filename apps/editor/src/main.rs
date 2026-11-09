@@ -7,10 +7,11 @@
 //! pannable and zoomable canvas with a white artboard, selection
 //! handles with corner resize, and a tabbed right panel (Design,
 //! Logic, Data, Code). Edits persist to localStorage and restore on
-//! reload. The demo bundle in `fixtures/demo-project.json` is
-//! generated from the real Chida CLI shop template (project, database
-//! and flows), see `generate-fixture.sh`. This same UI is the future
-//! desktop editor UI.
+//! reload. The editor opens on a start screen: a blank project, a
+//! project file from disk, or one of the bundled template projects
+//! in `fixtures/tpl-*.json`, each generated from the real Chida CLI
+//! templates (project, database and flows), see
+//! `generate-fixture.sh`. This same UI is the desktop editor UI.
 
 use chida_core::{Color, Gradient, LayoutAlign, LayoutDirection, Node, NodeKind, Page, Project, Shadow};
 use chida_db::Database;
@@ -20,8 +21,107 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use wasm_bindgen::JsCast;
 
-const DEMO_JSON: &str = include_str!("../fixtures/demo-project.json");
 const STORAGE_KEY: &str = "chida-editor-bundle-v3";
+
+/// The bundled starter templates: key, Persian display name and the
+/// thumbnail render (the CLI's own render of the template home page).
+const TEMPLATES: [(&str, &str, &str); 8] = [
+    ("shop", "فروشگاه ساده", "assets/thumbs/shop.jpg"),
+    ("digikala", "فروشگاه بزرگ", "assets/thumbs/digikala.jpg"),
+    ("persian", "صفحه فارسی", "assets/thumbs/persian.jpg"),
+    ("liquid-glass", "شیشه‌ای", "assets/thumbs/liquid-glass.jpg"),
+    ("saas-dashboard", "داشبورد مدیریتی", "assets/thumbs/saas-dashboard.jpg"),
+    ("clinic", "درمانگاه", "assets/thumbs/clinic.jpg"),
+    ("restaurant", "رستوران", "assets/thumbs/restaurant.jpg"),
+    ("portfolio", "نمونه‌کار", "assets/thumbs/portfolio.jpg"),
+];
+
+fn template_json(key: &str) -> Option<&'static str> {
+    Some(match key {
+        "shop" => include_str!("../fixtures/tpl-shop.json"),
+        "digikala" => include_str!("../fixtures/tpl-digikala.json"),
+        "persian" => include_str!("../fixtures/tpl-persian.json"),
+        "liquid-glass" => include_str!("../fixtures/tpl-liquid-glass.json"),
+        "saas-dashboard" => include_str!("../fixtures/tpl-saas-dashboard.json"),
+        "clinic" => include_str!("../fixtures/tpl-clinic.json"),
+        "restaurant" => include_str!("../fixtures/tpl-restaurant.json"),
+        "portfolio" => include_str!("../fixtures/tpl-portfolio.json"),
+        _ => return None,
+    })
+}
+
+fn template_bundle(key: &str) -> Option<Bundle> {
+    serde_json::from_str(template_json(key)?).ok()
+}
+
+/// A from-zero project: one page holding one empty desktop frame.
+fn blank_bundle() -> Bundle {
+    let mut project = Project::new("my-site", "پروژه تازه");
+    let mut page = Page::new("home", "صفحه اصلی", "/", 1440.0, 900.0);
+    let mut frame = Node::new("desktop-frame", "فریم دسکتاپ", NodeKind::Frame, 0.0, 0.0, 1440.0, 900.0);
+    frame.fill = Some(Color::WHITE);
+    // The backdrop frame starts locked: it fills the whole page, and a
+    // locked node lets canvas drags fall through to marquee selection,
+    // so the user can still rubber-band their own elements over it.
+    // It can be unlocked from the layers panel.
+    frame.props.insert("locked".into(), "1".into());
+    page.root.children.push(frame);
+    project.pages.push(page);
+    Bundle {
+        project,
+        database: Database::default(),
+        flows: Vec::new(),
+        styles: Vec::new(),
+    }
+}
+
+/// Ids of nodes that carry a `locked = 1` prop (the blank project's
+/// backdrop frame): they start in the editor's locked set.
+fn seed_locked(project: &Project) -> BTreeSet<String> {
+    fn walk(node: &Node, out: &mut BTreeSet<String>) {
+        if node.props.get("locked").map(|v| v == "1").unwrap_or(false) {
+            out.insert(node.id.clone());
+        }
+        for child in &node.children {
+            walk(child, out);
+        }
+    }
+    let mut out = BTreeSet::new();
+    for page in &project.pages {
+        walk(&page.root, &mut out);
+    }
+    out
+}
+
+/// Parse a project file picked by the user: the editor bundle shape
+/// (which is also the CLI `.chida.json` shape), or a bare design
+/// project JSON as exported by the «خروجی JSON» button.
+fn parse_bundle_text(text: &str) -> Option<Bundle> {
+    if let Ok(b) = serde_json::from_str::<Bundle>(text) {
+        if !b.project.pages.is_empty() {
+            return Some(b);
+        }
+    }
+    if let Ok(p) = Project::from_json(text) {
+        if !p.pages.is_empty() {
+            return Some(Bundle {
+                project: p,
+                database: Database::default(),
+                flows: Vec::new(),
+                styles: Vec::new(),
+            });
+        }
+    }
+    None
+}
+
+/// True when a previous session left autosaved work in this browser.
+fn has_saved_work() -> bool {
+    web_sys::window()
+        .and_then(|w| w.local_storage().ok().flatten())
+        .and_then(|s| s.get_item(STORAGE_KEY).ok().flatten())
+        .is_some()
+}
 
 /// A user-saved named style: the paint and text look of one node,
 /// captured so it can be reapplied to any other node in one click.
@@ -49,10 +149,6 @@ struct Bundle {
     styles: Vec<NamedStyle>,
 }
 
-fn fixture_bundle() -> Bundle {
-    serde_json::from_str(DEMO_JSON).expect("bundled demo fixture must parse")
-}
-
 fn load_bundle() -> Bundle {
     if let Some(w) = web_sys::window() {
         if let Ok(Some(storage)) = w.local_storage() {
@@ -63,7 +159,7 @@ fn load_bundle() -> Bundle {
             }
         }
     }
-    fixture_bundle()
+    blank_bundle()
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -286,6 +382,27 @@ fn clone_with_new_ids(node: &Node, counter: &mut u32) -> Node {
         .map(|c| clone_with_new_ids(c, counter))
         .collect();
     copy
+}
+
+/// Move a node to the very front (end of its sibling list, painted
+/// last) or the very back (start of the list) inside its parent.
+/// Returns true when the node was found.
+fn move_to_edge(node: &mut Node, id: &str, front: bool) -> bool {
+    if let Some(pos) = node.children.iter().position(|c| c.id == id) {
+        let child = node.children.remove(pos);
+        if front {
+            node.children.push(child);
+        } else {
+            node.children.insert(0, child);
+        }
+        return true;
+    }
+    for child in node.children.iter_mut() {
+        if move_to_edge(child, id, front) {
+            return true;
+        }
+    }
+    false
 }
 
 /// Move a node one step forward/backward among its siblings, which is
@@ -793,6 +910,7 @@ enum Tool {
     Frame,
     Rect,
     Ellipse,
+    Line,
     Text,
     Image,
     Button,
@@ -806,12 +924,24 @@ impl Tool {
             Tool::Frame => Some(NodeKind::Frame),
             Tool::Rect => Some(NodeKind::Rectangle),
             Tool::Ellipse => Some(NodeKind::Ellipse),
+            Tool::Line => Some(NodeKind::Divider),
             Tool::Text => Some(NodeKind::Text),
             Tool::Image => Some(NodeKind::Image),
             Tool::Button => Some(NodeKind::Button),
             Tool::Card => Some(NodeKind::Card),
             Tool::Input => Some(NodeKind::Input),
             _ => None,
+        }
+    }
+
+    /// The lowest editor level (1 simple, 2 builder, 3 pro) that
+    /// offers this tool on the rail.
+    fn min_level(self) -> u8 {
+        match self {
+            Tool::Move | Tool::Text | Tool::Image => 1,
+            Tool::Hand => 2,
+            Tool::Frame | Tool::Rect | Tool::Ellipse | Tool::Line => 2,
+            Tool::Button | Tool::Card | Tool::Input => 3,
         }
     }
 }
@@ -837,6 +967,10 @@ enum DragMode {
     Pan { start_x: i32, start_y: i32, orig_x: f32, orig_y: f32 },
     /// Marquee (rubber band) selection, in page coordinates.
     Marquee { sx: f32, sy: f32, cx: f32, cy: f32 },
+    /// Drawing a new shape with a toolbar tool: start and current
+    /// point in page coordinates. The node is only created on mouse
+    /// up, sized by the drag (a plain click keeps the default size).
+    Create { kind: NodeKind, sx: f32, sy: f32, cx: f32, cy: f32 },
 }
 
 #[component]
@@ -855,7 +989,7 @@ fn App() -> impl IntoView {
     let tab = RwSignal::new(0u8); // 0 design, 1 logic, 2 data, 3 code
     let tool = RwSignal::new(Tool::Move);
     let counter = RwSignal::new(100u32);
-    let locked = RwSignal::new(BTreeSet::<String>::new());
+    let locked = RwSignal::new(bundle.with_untracked(|b| seed_locked(&b.project)));
     /// Full multi-selection; `selected_id` is the primary member.
     let sel_set = RwSignal::new(BTreeSet::<String>::new());
     /// Left panel tab: 0 layers, 1 components.
@@ -867,6 +1001,13 @@ fn App() -> impl IntoView {
     /// Clean full screen preview: on/off plus the page it shows.
     let preview = RwSignal::new(false);
     let preview_page = RwSignal::new(0usize);
+    /// The start screen overlays the editor on load and from the
+    /// «خانه» button; the work underneath stays untouched.
+    let home_open = RwSignal::new(true);
+    /// Why a picked project file was refused, shown on the start screen.
+    let home_error = RwSignal::new(String::new());
+    /// Hidden input behind «باز کردن فایل» on the start screen.
+    let open_ref = NodeRef::<leptos::html::Input>::new();
     /// Name typed for a style about to be saved.
     let style_name = RwSignal::new(String::new());
     /// Node whose image an in-flight upload replaces; None means the
@@ -968,7 +1109,7 @@ fn App() -> impl IntoView {
         persist();
     };
 
-    let undo = move |_| {
+    let do_undo = move || {
         let prev = past.with_untracked(|p| p.last().cloned());
         if let Some(prev) = prev {
             past.update(|p| {
@@ -981,7 +1122,7 @@ fn App() -> impl IntoView {
             persist();
         }
     };
-    let redo = move |_| {
+    let do_redo = move || {
         let next = future.with_untracked(|f| f.last().cloned());
         if let Some(next) = next {
             future.update(|f| {
@@ -993,6 +1134,66 @@ fn App() -> impl IntoView {
             });
             persist();
         }
+    };
+
+    /// Replace everything with the given bundle and enter the
+    /// editor: history, selection and view state start fresh, and
+    /// the new project is autosaved like any other edit.
+    let start_project = move |mut b: Bundle| {
+        for page in &mut b.project.pages {
+            page.root.apply_layout();
+        }
+        let seeds = seed_locked(&b.project);
+        past.update(|p| p.clear());
+        future.update(|f| f.clear());
+        locked.set(seeds);
+        selected_id.set(String::new());
+        sel_set.set(BTreeSet::new());
+        page_index.set(0);
+        zoom.set(None);
+        pan.set((0.0, 0.0));
+        tool.set(Tool::Move);
+        counter.set(100_000);
+        bundle.set(b);
+        persist();
+        home_error.set(String::new());
+        home_open.set(false);
+    };
+
+    /// Button friendly wrappers around the history moves (the
+    /// keyboard handler calls `do_undo` and `do_redo` directly).
+    let undo = move |_: leptos::ev::MouseEvent| do_undo();
+    let redo = move |_: leptos::ev::MouseEvent| do_redo();
+
+    /// Read the project file picked on the start screen.
+    let on_open_change = move |ev: leptos::ev::Event| {
+        let Some(target) = ev.target() else { return };
+        let Ok(input) = target.dyn_into::<web_sys::HtmlInputElement>() else {
+            return;
+        };
+        let Some(files) = input.files() else { return };
+        let Some(file) = files.get(0) else { return };
+        let Ok(reader) = web_sys::FileReader::new() else {
+            return;
+        };
+        let reader2 = reader.clone();
+        let onload = wasm_bindgen::closure::Closure::wrap(Box::new(move || {
+            if let Ok(result) = reader2.result() {
+                if let Some(text) = result.as_string() {
+                    match parse_bundle_text(&text) {
+                        Some(b) => start_project(b),
+                        None => home_error.set(
+                            "این فایل خوانده نشد؛ یک فایل پروژه چیدا با پسوند chida.json انتخاب کن."
+                                .to_string(),
+                        ),
+                    }
+                }
+            }
+        }) as Box<dyn FnMut()>);
+        reader.set_onload(Some(onload.as_ref().unchecked_ref()));
+        onload.forget();
+        let _ = reader.read_as_text(&file);
+        input.set_value("");
     };
 
     let reset_all = move |_| {
@@ -1008,8 +1209,8 @@ fn App() -> impl IntoView {
                 let _ = storage.remove_item(STORAGE_KEY);
             }
         }
-        bundle.set(fixture_bundle());
-        saved_stamp.set("به نسخه نمونه برگشت و ذخیره پاک شد".to_string());
+        bundle.set(blank_bundle());
+        saved_stamp.set("پروژه تازه ساخته شد و ذخیره پاک شد".to_string());
     };
 
     let flat_canvas = move || {
@@ -1080,6 +1281,11 @@ fn App() -> impl IntoView {
                 r
             }
             NodeKind::Ellipse => Node::new(id, "دایره تازه", kind, px - 60.0, py - 60.0, 120.0, 120.0),
+            NodeKind::Divider => {
+                let mut d = Node::new(id, "خط تازه", kind, px - 80.0, py - 1.0, 160.0, 2.0);
+                d.fill = Some(ink);
+                d
+            }
             NodeKind::Text => Node::text_node(
                 id,
                 "متن تازه",
@@ -1173,22 +1379,20 @@ fn App() -> impl IntoView {
                     drag.set(DragMode::Marquee { sx: px, sy: py, cx: px, cy: py });
                 }
             }
+            Tool::Image => {
+                // The image tool works through the file picker (the
+                // rail button opens it); pressing on the canvas with
+                // it active does nothing.
+            }
             t => {
                 if let Some(kind) = t.shape_kind() {
                     if let Some((px, py)) = artboard_point(&ev) {
-                        record("add");
-                        let node = make_node(kind, px, py);
-                        let new_id = node.id.clone();
-                        apply(&|p: &mut Project| {
-                            if let Some(page) = p.pages.get_mut(page_index.get_untracked()) {
-                                page.root.children.push(node.clone());
-                            }
-                        });
-                        selected_id.set(new_id.clone());
-                        let mut one = BTreeSet::new();
-                        one.insert(new_id);
-                        sel_set.set(one);
-                        tool.set(Tool::Move);
+                        // Start a draw drag: the node is created on
+                        // mouse up with the dragged size, or with the
+                        // default size when this turns out to be a
+                        // plain click.
+                        ctx_menu.set(None);
+                        drag.set(DragMode::Create { kind, sx: px, sy: py, cx: px, cy: py });
                     }
                 }
             }
@@ -1230,6 +1434,11 @@ fn App() -> impl IntoView {
             DragMode::Marquee { sx, sy, .. } => {
                 if let Some((px, py)) = artboard_point(&ev) {
                     drag.set(DragMode::Marquee { sx, sy, cx: px, cy: py });
+                }
+            }
+            DragMode::Create { kind, sx, sy, .. } => {
+                if let Some((px, py)) = artboard_point(&ev) {
+                    drag.set(DragMode::Create { kind, sx, sy, cx: px, cy: py });
                 }
             }
             DragMode::Pan { start_x, start_y, orig_x, orig_y } => {
@@ -1339,6 +1548,56 @@ fn App() -> impl IntoView {
         }
     };
     let on_mouse_up = move |_: leptos::ev::MouseEvent| {
+        if let DragMode::Create { kind, sx, sy, cx, cy } = drag.get_untracked() {
+            let (dx, dy) = ((cx - sx).abs(), (cy - sy).abs());
+            record("add");
+            let node = if dx < 6.0 && dy < 6.0 {
+                // A plain click: the default sized node, centred on
+                // the click point.
+                make_node(kind, sx, sy)
+            } else {
+                let mut n = make_node(kind, (sx + cx) / 2.0, (sy + cy) / 2.0);
+                let (mut x, mut y) = (sx.min(cx), sy.min(cy));
+                let (mut w, mut h) = (dx, dy);
+                match kind {
+                    NodeKind::Divider => {
+                        // A line follows the longer axis of the drag
+                        // and stays thin on the other one.
+                        if dx >= dy {
+                            h = if dy >= 4.0 { dy } else { 2.0 };
+                            y = sy.min(cy) + (dy - h) / 2.0;
+                        } else {
+                            w = if dx >= 4.0 { dx } else { 2.0 };
+                            x = sx.min(cx) + (dx - w) / 2.0;
+                        }
+                    }
+                    NodeKind::Text => {
+                        w = w.max(40.0);
+                        h = h.max(24.0);
+                    }
+                    _ => {
+                        w = w.max(8.0);
+                        h = h.max(8.0);
+                    }
+                }
+                n.x = x;
+                n.y = y;
+                n.width = w;
+                n.height = h;
+                n
+            };
+            let new_id = node.id.clone();
+            apply(&|p: &mut Project| {
+                if let Some(page) = p.pages.get_mut(page_index.get_untracked()) {
+                    page.root.children.push(node.clone());
+                }
+            });
+            selected_id.set(new_id.clone());
+            let mut one = BTreeSet::new();
+            one.insert(new_id);
+            sel_set.set(one);
+            tool.set(Tool::Move);
+        }
         if let DragMode::Marquee { sx, sy, cx, cy } = drag.get_untracked() {
             let (x0, x1) = (sx.min(cx), sx.max(cx));
             let (y0, y1) = (sy.min(cy), sy.max(cy));
@@ -1352,6 +1611,7 @@ fn App() -> impl IntoView {
                     .filter(|n| {
                         n.ax < x1 && n.ax + n.width > x0 && n.ay < y1 && n.ay + n.height > y0
                     })
+                    .filter(|n| !locked.with_untracked(|l| l.contains(&n.id)))
                     .map(|n| n.id)
                     .collect();
                 selected_id.set(hits.first().cloned().unwrap_or_default());
@@ -1493,6 +1753,119 @@ fn App() -> impl IntoView {
             }
         });
         ctx_menu.set(None);
+    };
+    /// Bring the primary selected node to the very front of its
+    /// siblings, or send it to the very back.
+    let front_selection = move |front: bool| {
+        let id = selected_id.get_untracked();
+        if id.is_empty() {
+            return;
+        }
+        record("frontback");
+        apply(&|p: &mut Project| {
+            if let Some(page) = p.pages.get_mut(page_index.get_untracked()) {
+                move_to_edge(&mut page.root, &id, front);
+            }
+        });
+        ctx_menu.set(None);
+    };
+    /// Align the whole selection to the page: every selected node
+    /// shifts by the same page-space delta, so nested nodes (whose
+    /// parents only translate them) land exactly right too.
+    let align_selection = move |mode: &str| {
+        let ids = sel_set.get_untracked();
+        if ids.is_empty() {
+            return;
+        }
+        let (pw, ph) = page_size();
+        let flat = flat_all();
+        // Per-node deltas: every selected element lands on the same page
+        // edge or page middle, like Figma's align tools (a single shared
+        // delta would only align the selection bounding box).
+        let deltas: Vec<(String, f32, f32)> = flat
+            .iter()
+            .filter(|n| ids.contains(&n.id))
+            .map(|r| {
+                let (mut dx, mut dy) = (0.0f32, 0.0f32);
+                match mode {
+                    "left" => dx = -r.ax,
+                    "hcenter" => dx = pw / 2.0 - (r.ax + r.width / 2.0),
+                    "right" => dx = pw - (r.ax + r.width),
+                    "top" => dy = -r.ay,
+                    "vmiddle" => dy = ph / 2.0 - (r.ay + r.height / 2.0),
+                    "bottom" => dy = ph - (r.ay + r.height),
+                    _ => {}
+                }
+                (r.id.clone(), dx, dy)
+            })
+            .collect();
+        if deltas.is_empty() || deltas.iter().all(|(_, dx, dy)| *dx == 0.0 && *dy == 0.0) {
+            return;
+        }
+        record("align");
+        apply(&|p: &mut Project| {
+            if let Some(page) = p.pages.get_mut(page_index.get_untracked()) {
+                for (id, dx, dy) in &deltas {
+                    if let Some(n) = page.root.find_mut(id) {
+                        n.x += dx;
+                        n.y += dy;
+                    }
+                }
+            }
+        });
+    };
+    /// Spread 3 or more selected nodes evenly along one axis: the
+    /// first and last stay put and the middle ones get equal gaps.
+    let distribute_selection = move |horizontal: bool| {
+        let ids = sel_set.get_untracked();
+        if ids.len() < 3 {
+            return;
+        }
+        let flat = flat_all();
+        let mut rects: Vec<(String, f32, f32, f32, f32)> = flat
+            .iter()
+            .filter(|n| ids.contains(&n.id))
+            .map(|n| (n.id.clone(), n.ax, n.ay, n.width, n.height))
+            .collect();
+        if rects.len() < 3 {
+            return;
+        }
+        rects.sort_by(|a, b| {
+            let (ka, kb) = if horizontal { (a.1, b.1) } else { (a.2, b.2) };
+            ka.partial_cmp(&kb).unwrap_or(std::cmp::Ordering::Equal)
+        });
+        let n = rects.len();
+        let (first, last) = if horizontal {
+            (rects[0].1, rects[n - 1].1 + rects[n - 1].3)
+        } else {
+            (rects[0].2, rects[n - 1].2 + rects[n - 1].4)
+        };
+        let total_size: f32 = rects
+            .iter()
+            .map(|r| if horizontal { r.3 } else { r.4 })
+            .sum();
+        let gap = ((last - first) - total_size) / (n - 1) as f32;
+        let mut deltas: Vec<(String, f32)> = Vec::new();
+        let mut cursor = first;
+        for r in &rects {
+            let cur = if horizontal { r.1 } else { r.2 };
+            deltas.push((r.0.clone(), cursor - cur));
+            cursor += (if horizontal { r.3 } else { r.4 }) + gap;
+        }
+        record("distribute");
+        apply(&|p: &mut Project| {
+            if let Some(page) = p.pages.get_mut(page_index.get_untracked()) {
+                for (id, d) in &deltas {
+                    if let Some(node) = page.root.find_mut(id) {
+                        if horizontal {
+                            node.x += d;
+                        } else {
+                            node.y += d;
+                        }
+                    }
+                }
+            }
+        });
     };
     let insert_component = move |key: &str| {
         record("insert-component");
@@ -1785,6 +2158,34 @@ fn App() -> impl IntoView {
                 if (ev.ctrl_key() || ev.meta_key()) && (key == "d" || key == "D") {
                     ev.prevent_default();
                     duplicate_selection();
+                } else if (ev.ctrl_key() || ev.meta_key()) && (key == "z" || key == "Z") {
+                    ev.prevent_default();
+                    if ev.shift_key() {
+                        do_redo();
+                    } else {
+                        do_undo();
+                    }
+                } else if (ev.ctrl_key() || ev.meta_key()) && (key == "y" || key == "Y") {
+                    ev.prevent_default();
+                    do_redo();
+                } else if !ev.ctrl_key() && !ev.meta_key() && !ev.alt_key() {
+                    // Tool shortcuts by physical key position, so
+                    // they work on any keyboard layout.
+                    let t = match ev.code().as_str() {
+                        "KeyV" => Some(Tool::Move),
+                        "KeyH" => Some(Tool::Hand),
+                        "KeyF" => Some(Tool::Frame),
+                        "KeyR" => Some(Tool::Rect),
+                        "KeyO" => Some(Tool::Ellipse),
+                        "KeyL" => Some(Tool::Line),
+                        "KeyT" => Some(Tool::Text),
+                        _ => None,
+                    };
+                    if let Some(t) = t {
+                        if t.min_level() <= level.get_untracked() {
+                            tool.set(t);
+                        }
+                    }
                 }
             }
         }
@@ -1815,17 +2216,20 @@ fn App() -> impl IntoView {
         pan.set((0.0, 0.0));
     };
 
-    let tools: Vec<(Tool, &'static str, &'static str)> = vec![
-        (Tool::Move, "➤", "انتخاب"),
-        (Tool::Hand, "✋", "دست"),
-        (Tool::Frame, "▢", "فریم"),
-        (Tool::Rect, "▭", "مستطیل"),
-        (Tool::Ellipse, "●", "دایره"),
-        (Tool::Text, "T", "متن"),
-        (Tool::Image, "🖼", "تصویر"),
-        (Tool::Button, "▣", "دکمه"),
-        (Tool::Card, "▤", "کارت"),
-        (Tool::Input, "⌨", "ورودی"),
+    // The tool rail: tool, icon, Persian label, shortcut key (empty
+    // for none). Which tools show depends on the editor level.
+    let tools: Vec<(Tool, &'static str, &'static str, &'static str)> = vec![
+        (Tool::Move, "➤", "انتخاب", "V"),
+        (Tool::Hand, "✋", "دست", "H"),
+        (Tool::Text, "T", "متن", "T"),
+        (Tool::Image, "🖼", "تصویر", ""),
+        (Tool::Frame, "▢", "فریم", "F"),
+        (Tool::Rect, "▭", "مستطیل", "R"),
+        (Tool::Ellipse, "●", "دایره", "O"),
+        (Tool::Line, "―", "خط", "L"),
+        (Tool::Button, "▣", "دکمه", ""),
+        (Tool::Card, "▤", "کارت", ""),
+        (Tool::Input, "⌨", "ورودی", ""),
     ];
 
     view! {
@@ -1841,8 +2245,8 @@ fn App() -> impl IntoView {
                     <button title="از نو" disabled=move || future.with(|f| f.is_empty()) on:click=redo>"↪"</button>
                 </div>
                 <nav class="levels" aria-label="سطح ویرایشگر">
-                    <button class:active=move || level.get() == 1 on:click=move |_| { level.set(1); if tab.get() > 0 { tab.set(0); } }>"ساده"</button>
-                    <button class:active=move || level.get() == 2 on:click=move |_| { level.set(2); if tab.get() == 1 || tab.get() == 3 { tab.set(0); } }>"سازنده"</button>
+                    <button class:active=move || level.get() == 1 on:click=move |_| { level.set(1); if tool.get_untracked().min_level() > 1 { tool.set(Tool::Move); } if tab.get() > 0 { tab.set(0); } }>"ساده"</button>
+                    <button class:active=move || level.get() == 2 on:click=move |_| { level.set(2); if tool.get_untracked().min_level() > 2 { tool.set(Tool::Move); } if tab.get() == 1 || tab.get() == 3 { tab.set(0); } }>"سازنده"</button>
                     <button class:active=move || level.get() == 3 on:click=move |_| level.set(3)>"حرفه‌ای"</button>
                 </nav>
                 <div class="zoom-box">
@@ -1852,6 +2256,7 @@ fn App() -> impl IntoView {
                     <button class="fit-btn" title="جا دادن صفحه در نما" on:click=zoom_fit>"جا دادن"</button>
                 </div>
                 <div class="top-actions">
+                    <button title="برگرد به صفحه شروع" on:click=move |_| home_open.set(true)>"🏠 خانه"</button>
                     <button class="preview-btn" on:click=move |_| {
                         preview_page.set(page_index.get_untracked());
                         preview.set(true);
@@ -1884,19 +2289,40 @@ fn App() -> impl IntoView {
 
             <div class="workbench">
                 <aside class="rail">
-                    {tools.into_iter().map(|(t, icon, label)| {
-                        view! {
-                            <button
-                                class="tool"
-                                class:active=move || tool.get() == t
-                                title=label
-                                on:click=move |_| tool.set(t)
-                            >
-                                <span class="tool-icon">{icon}</span>
-                                <span class="tool-label">{label}</span>
-                            </button>
-                        }
-                    }).collect_view()}
+                    {move || {
+                        let lv = level.get();
+                        tools.iter().copied()
+                            .filter(|(t, _, _, _)| t.min_level() <= lv)
+                            .map(|(t, icon, label, key)| {
+                                let title = if key.is_empty() {
+                                    label.to_string()
+                                } else {
+                                    format!("{label} ({key})")
+                                };
+                                view! {
+                                    <button
+                                        class="tool"
+                                        class:active=move || tool.get() == t
+                                        title=title
+                                        on:click=move |_| {
+                                            if t == Tool::Image {
+                                                // The image tool is the
+                                                // upload picker itself.
+                                                upload_target.set(None);
+                                                if let Some(input) = file_ref.get_untracked() {
+                                                    input.click();
+                                                }
+                                            } else {
+                                                tool.set(t);
+                                            }
+                                        }
+                                    >
+                                        <span class="tool-icon">{icon}</span>
+                                        <span class="tool-label">{label}</span>
+                                    </button>
+                                }
+                            }).collect_view()
+                    }}
                 </aside>
 
                 <aside class="left-panel">
@@ -2183,8 +2609,6 @@ fn App() -> impl IntoView {
                                                         });
                                                     }
                                                     Tool::Move => {
-                                                        ev.stop_propagation();
-                                                        ctx_menu.set(None);
                                                         let resolved = bundle.with_untracked(|b| {
                                                             b.project
                                                                 .pages
@@ -2192,6 +2616,17 @@ fn App() -> impl IntoView {
                                                                 .map(|pg| group_root_of(&pg.root, &id_down))
                                                                 .unwrap_or_else(|| id_down.clone())
                                                         });
+                                                        if locked.with_untracked(|l| l.contains(&resolved)) {
+                                                            // A locked node (for example the
+                                                            // blank project's backdrop frame)
+                                                            // lets the press fall through to
+                                                            // the artboard, so a drag becomes
+                                                            // a marquee instead of a blocked
+                                                            // node drag.
+                                                            return;
+                                                        }
+                                                        ev.stop_propagation();
+                                                        ctx_menu.set(None);
                                                         if ev.shift_key() {
                                                             // Toggle membership, no drag.
                                                             let mut set = sel_set.get_untracked();
@@ -2290,6 +2725,16 @@ fn App() -> impl IntoView {
                                             (cy - sy).abs()
                                         );
                                         view! { <div class="marquee" style=style></div> }.into_any()
+                                    }
+                                    DragMode::Create { sx, sy, cx, cy, .. } => {
+                                        let style = format!(
+                                            "left:{}px;top:{}px;width:{}px;height:{}px;",
+                                            sx.min(cx),
+                                            sy.min(cy),
+                                            (cx - sx).abs(),
+                                            (cy - sy).abs()
+                                        );
+                                        view! { <div class="create-ghost" style=style></div> }.into_any()
                                     }
                                     _ => ().into_any(),
                                 }}
@@ -2507,6 +2952,36 @@ fn App() -> impl IntoView {
                                             view! {
                                                 <div class="fields" class:big=simple>
                                                     <p class="node-name">{node.name.clone()}<span class="node-kind">{kind_fa(node.kind)}</span></p>
+                                                    {(level.get() == 3).then(|| view! {
+                                                        <details class="prop-section" open>
+                                                            <summary>"ترتیب و تراز"</summary>
+                                                            <div class="align-row">
+                                                                <span>"ترتیب"</span>
+                                                                <button on:click=move |_| front_selection(true)>"جلوترین"</button>
+                                                                <button on:click=move |_| { let id = selected_id.get_untracked(); reorder_selection(id, true); }>"جلو"</button>
+                                                                <button on:click=move |_| { let id = selected_id.get_untracked(); reorder_selection(id, false); }>"عقب"</button>
+                                                                <button on:click=move |_| front_selection(false)>"عقب‌ترین"</button>
+                                                            </div>
+                                                            <div class="align-row">
+                                                                <span>"تراز با صفحه"</span>
+                                                                <button on:click=move |_| align_selection("left")>"چپ"</button>
+                                                                <button on:click=move |_| align_selection("hcenter")>"وسط افقی"</button>
+                                                                <button on:click=move |_| align_selection("right")>"راست"</button>
+                                                            </div>
+                                                            <div class="align-row">
+                                                                <span></span>
+                                                                <button on:click=move |_| align_selection("top")>"بالا"</button>
+                                                                <button on:click=move |_| align_selection("vmiddle")>"وسط عمودی"</button>
+                                                                <button on:click=move |_| align_selection("bottom")>"پایین"</button>
+                                                            </div>
+                                                            <div class="align-row">
+                                                                <span>"پخش و تکثیر"</span>
+                                                                <button disabled=move || sel_set.get().len() < 3 on:click=move |_| distribute_selection(true)>"پخش افقی"</button>
+                                                                <button disabled=move || sel_set.get().len() < 3 on:click=move |_| distribute_selection(false)>"پخش عمودی"</button>
+                                                                <button on:click=move |_| duplicate_selection()>"تکثیر"</button>
+                                                            </div>
+                                                        </details>
+                                                    })}
                                                     <details class="prop-section" open>
                                                         <summary>"چیدمان"</summary>
                                                         <div class="grid2">
@@ -2515,15 +2990,17 @@ fn App() -> impl IntoView {
                                                             <label>"عرض" <input type="number" prop:value=nw.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("w", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.width = v.max(1.0); } }); } /></label>
                                                             <label>"ارتفاع" <input type="number" prop:value=nh.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("h", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.height = v.max(1.0); } }); } /></label>
                                                         </div>
-                                                        {(!simple).then(|| view! {
+                                                        {(level.get() >= 2).then(|| view! {
                                                             <label>"گردی گوشه" <span class="val">{format!("{}", radius as i32)}</span>
                                                                 <input type="range" min="0" max="60" prop:value=radius.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("radius", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.corner_radius = v; } }); } />
                                                             </label>
+                                                        })}
+                                                        {(level.get() == 3).then(|| view! {
                                                             <label>"شفافیت" <span class="val">{format!("٪{}", opacity_pct as i32)}</span>
                                                                 <input type="range" min="0" max="100" prop:value=opacity_pct.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("opacity", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.opacity = (v / 100.0).clamp(0.0, 1.0); } }); } />
                                                             </label>
                                                         })}
-                                                        {(is_container && !simple).then(|| view! {
+                                                        {(is_container && level.get() >= 2).then(|| view! {
                                                             <div class="align-row">
                                                                 <span>"چیدمان خودکار"</span>
                                                                 <button class:on=layout_dir == LayoutDirection::None on:click=move |_| edit_selected("layoutdir", &|n: &mut Node| n.layout_direction = LayoutDirection::None)>"بدون"</button>
@@ -2531,7 +3008,7 @@ fn App() -> impl IntoView {
                                                                 <button class:on=layout_dir == LayoutDirection::Column on:click=move |_| edit_selected("layoutdir", &|n: &mut Node| n.layout_direction = LayoutDirection::Column)>"عمودی"</button>
                                                             </div>
                                                         })}
-                                                        {(is_container && !simple && layout_dir != LayoutDirection::None).then(|| view! {
+                                                        {(is_container && level.get() >= 2 && layout_dir != LayoutDirection::None).then(|| view! {
                                                             <div class="grid2">
                                                                 <label>"فاصله بین بچه‌ها" <input type="number" prop:value=layout_gap.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("layoutgap", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.layout_gap = v.max(0.0); } }); } /></label>
                                                                 <label>"حاشیه داخلی" <input type="number" prop:value=layout_pad.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("layoutpad", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.layout_padding = v.max(0.0); } }); } /></label>
@@ -2553,13 +3030,13 @@ fn App() -> impl IntoView {
                                                         <label class="full"><input type="text" prop:value=text_value on:input=move |ev| { let v = event_target_value(&ev); edit_selected("text", &|n: &mut Node| n.text = Some(v.clone())); } /></label>
                                                         <div class="grid2">
                                                             <label>"اندازه فونت" <input type="number" prop:value=fs.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("fontsize", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.font_size = v.max(6.0); } }); } /></label>
-                                                            {(!simple).then(|| view! {
+                                                            {(level.get() >= 2).then(|| view! {
                                                                 <label>"رنگ متن"
                                                                     <input type="color" prop:value=text_hex on:input=move |ev| { let v = event_target_value(&ev); edit_selected("textcolor", &|n: &mut Node| { if let Ok(c) = Color::from_hex(&v) { n.text_color = Some(c); } }); } />
                                                                 </label>
                                                             })}
                                                         </div>
-                                                        {(!simple).then(|| view! {
+                                                        {(level.get() >= 2).then(|| view! {
                                                             <div class="align-row">
                                                                 <span>"وزن"</span>
                                                                 {[(400u16, "عادی"), (500, "متوسط"), (700, "درشت")].into_iter().map(|(w, label)| {
@@ -2568,10 +3045,6 @@ fn App() -> impl IntoView {
                                                                         <button class:on=is_on on:click=move |_| edit_selected("weight", &|n: &mut Node| { n.font_weight = w; n.bold = w >= 600; })>{label}</button>
                                                                     }
                                                                 }).collect_view()}
-                                                            </div>
-                                                            <div class="grid2">
-                                                                <label>"ارتفاع خط" <input type="number" step="0.05" prop:value=lh_val.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("lineheight", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.line_height = v.clamp(0.8, 3.0); } }); } /></label>
-                                                                <label>"فاصله حروف" <input type="number" prop:value=ls_val.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("letterspacing", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.letter_spacing = v; } }); } /></label>
                                                             </div>
                                                             <div class="align-row">
                                                                 <span>"تراز"</span>
@@ -2584,10 +3057,16 @@ fn App() -> impl IntoView {
                                                                 }).collect_view()}
                                                             </div>
                                                         })}
+                                                        {(level.get() == 3).then(|| view! {
+                                                            <div class="grid2">
+                                                                <label>"ارتفاع خط" <input type="number" step="0.05" prop:value=lh_val.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("lineheight", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.line_height = v.clamp(0.8, 3.0); } }); } /></label>
+                                                                <label>"فاصله حروف" <input type="number" prop:value=ls_val.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("letterspacing", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.letter_spacing = v; } }); } /></label>
+                                                            </div>
+                                                        })}
                                                     </details>
                                                     <details class="prop-section" open>
                                                         <summary>"پس‌زمینه"</summary>
-                                                        {(!simple).then(|| view! {
+                                                        {(level.get() >= 2).then(|| view! {
                                                             <div class="align-row">
                                                                 <span>"نوع"</span>
                                                                 <button class:on=!has_grad on:click=move |_| edit_selected("fillmode", &|n: &mut Node| n.fill_gradient = None)>"یکدست"</button>
@@ -2604,7 +3083,7 @@ fn App() -> impl IntoView {
                                                                 <input class="hex" type="text" prop:value=fill_hex on:change=move |ev| { let v = event_target_value(&ev); edit_selected("fill", &|n: &mut Node| { if let Ok(c) = Color::from_hex(&v) { n.fill = Some(c); } }); } />
                                                             </div>
                                                         })}
-                                                        {(has_grad && !simple).then(|| view! {
+                                                        {(has_grad && level.get() >= 2).then(|| view! {
                                                             <div class="color-row">
                                                                 <span>"از"</span>
                                                                 <input type="color" prop:value=g_from on:input=move |ev| { let v = event_target_value(&ev); edit_selected("gradfrom", &|n: &mut Node| { if let (Some(g), Ok(c)) = (&mut n.fill_gradient, Color::from_hex(&v)) { g.from = c; } }); } />
@@ -2615,7 +3094,7 @@ fn App() -> impl IntoView {
                                                                 <input type="range" min="0" max="360" prop:value=g_angle.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("gradangle", &|n: &mut Node| { if let (Some(g), Ok(v)) = (&mut n.fill_gradient, v.parse::<f32>()) { g.angle = v; } }); } />
                                                             </label>
                                                         })}
-                                                        {(!simple).then(|| view! {
+                                                        {(level.get() >= 2).then(|| view! {
                                                             <div class="color-row">
                                                                 <span>"خط دور"</span>
                                                                 <input type="color" prop:value=stroke_hex on:input=move |ev| { let v = event_target_value(&ev); edit_selected("stroke", &|n: &mut Node| { if let Ok(c) = Color::from_hex(&v) { n.stroke = Some(c); if n.stroke_width <= 0.0 { n.stroke_width = 1.0; } } }); } />
@@ -2623,7 +3102,7 @@ fn App() -> impl IntoView {
                                                             </div>
                                                         })}
                                                     </details>
-                                                    {(!simple).then(|| view! {
+                                                    {(level.get() == 3).then(|| view! {
                                                         <details class="prop-section" open>
                                                             <summary>"سایه"</summary>
                                                             <label class="check">"سایه"
@@ -2651,7 +3130,7 @@ fn App() -> impl IntoView {
                                                             })}
                                                         </details>
                                                     })}
-                                                    {(is_button && !simple).then(|| view! {
+                                                    {(is_button && level.get() >= 2).then(|| view! {
                                                         <details class="prop-section" open>
                                                             <summary>"پیوند"</summary>
                                                             <label class="full">
@@ -2732,6 +3211,68 @@ fn App() -> impl IntoView {
                 node_ref=file_ref
                 on:change=on_file_change
             />
+            <input
+                type="file"
+                accept=".json,application/json"
+                class="hidden-file"
+                node_ref=open_ref
+                on:change=on_open_change
+            />
+            {move || home_open.get().then(|| {
+                let saved = has_saved_work();
+                let saved_name = bundle.with_untracked(|b| b.project.name.clone());
+                view! {
+                    <div class="home-overlay">
+                        <div class="home-inner">
+                            <img class="home-logo" src="assets/logo-mark.svg" alt="Chida"/>
+                            <h1>"چیدا"</h1>
+                            <p class="home-sub">"سایتت را از صفر بکش؛ چیدا از آن یک برنامه واقعی می‌سازد."</p>
+                            {saved.then(|| view! {
+                                <button class="home-continue" on:click=move |_| home_open.set(false)>
+                                    {format!("ادامه کار قبلی: {saved_name}")}
+                                </button>
+                            })}
+                            <div class="home-actions">
+                                <button class="home-card" on:click=move |_| start_project(blank_bundle())>
+                                    <span class="home-card-icon">"＋"</span>
+                                    <strong>"پروژه خالی"</strong>
+                                    <span>"یک صفحه خالی با یک فریم دسکتاپ؛ از صفر شروع کن."</span>
+                                </button>
+                                <button class="home-card" on:click=move |_| {
+                                    if let Some(input) = open_ref.get_untracked() {
+                                        input.click();
+                                    }
+                                }>
+                                    <span class="home-card-icon">"📂"</span>
+                                    <strong>"باز کردن فایل"</strong>
+                                    <span>"یک فایل پروژه چیدا با پسوند chida.json انتخاب کن."</span>
+                                </button>
+                            </div>
+                            {move || {
+                                let e = home_error.get();
+                                (!e.is_empty()).then(|| view! { <p class="home-error">{e}</p> })
+                            }}
+                            <h2 class="home-tpl-title">"قالب آماده"</h2>
+                            <p class="home-sub small">"از یک قالب شروع کن و هر جایش را که خواستی عوض کن."</p>
+                            <div class="tpl-grid">
+                                {TEMPLATES.iter().map(|(key, name, thumb)| {
+                                    let key_owned = key.to_string();
+                                    view! {
+                                        <button class="tpl-card" on:click=move |_| {
+                                            if let Some(b) = template_bundle(&key_owned) {
+                                                start_project(b);
+                                            }
+                                        }>
+                                            <img src=*thumb alt=*name/>
+                                            <span>{*name}</span>
+                                        </button>
+                                    }
+                                }).collect_view()}
+                            </div>
+                        </div>
+                    </div>
+                }
+            })}
             {move || preview.get().then(|| {
                 let (nodes, pname, pw, ph, pbg) = bundle.with(|b| {
                     b.project

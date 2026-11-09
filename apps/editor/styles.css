@@ -384,3 +384,53 @@ details.prop-section > summary::before { content:"▾ "; color:#0d99ff; }
 .wide-action:hover { background:#0d99ff; color:#fff; }
 .fields input:disabled { opacity:0.45; }
 select { cursor:pointer; }
+
+/* ---- round 4: start screen, draw ghost ---- */
+.home-overlay {
+  position: fixed; inset: 0; z-index: 400;
+  background: #1e1e1e; overflow-y: auto;
+  display: flex; justify-content: center;
+}
+.home-inner {
+  width: min(880px, 94vw); padding: 40px 0 60px;
+  display: flex; flex-direction: column; align-items: center;
+}
+.home-logo { width: 56px; height: 56px; }
+.home-inner h1 { font-size: 28px; margin: 12px 0 4px; }
+.home-sub { color: #a8a8a8; font-size: 13.5px; margin: 4px 0 18px; text-align: center; }
+.home-sub.small { margin-top: 0; }
+.home-continue {
+  background: #0d99ff; color: #fff; font-weight: 700; font-size: 13.5px;
+  padding: 10px 22px; border-radius: 9px; margin-bottom: 18px;
+}
+.home-continue:hover { background: #2aa5ff; }
+.home-actions { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+.home-card {
+  width: 300px; min-height: 128px; text-align: start;
+  background: #2c2c2c; border: 1px solid #454545; border-radius: 12px;
+  padding: 16px 18px; display: flex; flex-direction: column; gap: 6px;
+}
+.home-card:hover { border-color: #0d99ff; background: #333; }
+.home-card-icon { font-size: 22px; }
+.home-card strong { font-size: 15px; }
+.home-card span { color: #a8a8a8; font-size: 12px; line-height: 1.7; }
+.home-error {
+  color: #ff8589; background: #472527; border-radius: 8px;
+  padding: 8px 14px; margin: 16px 0 0; font-size: 12.5px;
+}
+.home-tpl-title { font-size: 17px; margin: 34px 0 2px; }
+.tpl-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 14px; width: 100%;
+}
+.tpl-card {
+  background: #2c2c2c; border: 1px solid #454545; border-radius: 12px;
+  padding: 8px; display: flex; flex-direction: column; gap: 8px; text-align: start;
+}
+.tpl-card:hover { border-color: #0d99ff; background: #333; }
+.tpl-card img { width: 100%; border-radius: 7px; display: block; background: #fff; }
+.tpl-card span { font-size: 13px; font-weight: 700; padding: 0 4px 4px; }
+.create-ghost {
+  position: absolute; border: 1.5px dashed #0d99ff;
+  background: rgba(13, 153, 255, 0.10); pointer-events: none; z-index: 60;
+}

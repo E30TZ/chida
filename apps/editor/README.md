@@ -47,10 +47,12 @@ host this same interface.
 
 ## Data
 
-The editor loads `fixtures/demo-project.json`, the full bundle
-(design project, database and flows) generated from the real Chida
-CLI shop template, not hand-written data. Regenerate it with
-`./generate-fixture.sh`.
+The editor opens on a start screen: a blank project, a project file
+from disk, or one of the bundled templates in `fixtures/tpl-*.json`.
+Each fixture is the full bundle (design project, database and flows)
+generated from a real Chida CLI template, not hand-written data, and
+each template card shows the CLI's own render of that template.
+Regenerate them with `./generate-fixture.sh`.
 
 ## Build
 
