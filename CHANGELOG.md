@@ -3,6 +3,22 @@
 All notable changes to Chida are recorded here. The format is based on
 Keep a Changelog, and this project uses semantic versioning.
 
+## [1.0.1] - 2026-11-09
+
+Release pipeline fix. No changes to the Chida tool itself; the 1.0.0
+release never received its download files because two CI jobs blocked
+the publish step, and this release ships the same code with a working
+pipeline.
+
+### Fixed
+
+- The Intel macOS build moved from the retired `macos-13` runner to
+  `macos-15-intel`; the old job waited in the queue forever.
+- The Debian package and AppImage steps now run the packaging scripts
+  through `sh`, because the copies of `scripts/build-deb.sh` and
+  `scripts/build-appimage.sh` stored on GitHub have no executable bit
+  and the steps failed with "Permission denied".
+
 ## [1.0.0] - 2026-11-08
 
 First release. Chida is a visual full-stack builder written in Rust:
