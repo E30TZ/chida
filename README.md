@@ -155,7 +155,9 @@ All files live on one page: the [download page](https://github.com/E30TZ/chida/r
 | Linux on ARM64 | `chida-1.0.1-linux-aarch64.tar.gz` | Unzip it, run `chida` |
 | Only the editor, in a browser | `chida-editor-1.0.1.zip` | Unzip it, open it (note below) |
 
-The `SHA256SUMS` file on the same page lets you check your download arrived whole. Desktop installers (the editor in its own window, no terminal) are being built now and will be added to the same page.
+The `SHA256SUMS` file on the same page lets you check your download arrived whole.
+
+**You want the editor in its own window, no terminal?** Take a desktop installer from the same page: `Chida_1.0.1_x64-setup.exe` (Windows), `Chida_1.0.1_x64.dmg` (Mac Intel), `Chida_1.0.1_aarch64.dmg` (Mac Apple Silicon), `Chida-desktop_1.0.1_amd64.deb` (Debian, Ubuntu), `Chida-desktop_1.0.1_amd64.AppImage` (any Linux), `Chida-1.0.1-1.x86_64.rpm` (Fedora, RHEL).
 
 ### Step 2: copy two lines
 
