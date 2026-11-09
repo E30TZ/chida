@@ -182,7 +182,7 @@ jobs:
         run: |
           rpmbuild -ba packaging/fedora/chida.spec
           mkdir -p release-out
-          cp ~/rpmbuild/RPMS/*/*.rpm release-out/
+          cp ~/rpmbuild/RPMS/*/chida-[0-9]*.rpm release-out/
           ls -la release-out
       - name: Upload the artifact
         uses: actions/upload-artifact@v4
