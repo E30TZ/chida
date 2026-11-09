@@ -53,7 +53,6 @@
 -   [👀 See it](#-see-it)
 -   [✨ What you can do](#-what-you-can-do)
 -   [🚀 Try it now](#-try-it-now)
--   [⚠️ What is not ready yet](#-what-is-not-ready-yet)
 -   [🛠️ For developers](#-for-developers)
 -   [📚 Documentation](#-documentation)
 -   [📄 License](#-license)
@@ -186,21 +185,6 @@ The first line makes a small shop project. The second line draws its pages as pi
 # Get the whole app, with all its code
 ./chida generate myshop/myshop.chida.json --out myshop-app
 ```
-
----
-
-# ⚠️ What is not ready yet
-
-> **We say it plainly, before you find out the hard way**
-
-<div align="left">
-
--   The app Chida makes for you keeps its lists in memory. When the app stops, the lists start again from the seed data. Saving to a real database is the next big job.
--   Passwords in the apps Chida makes are locked with a simple method for now, and the code says so itself, in the open. Do not use it for real people's passwords yet.
--   Very long texts that mix Persian and English in one box can come out in a slightly wrong order. Titles, prices and normal lines are fine.
--   The desktop window works but is new; its ready installers are still being built.
-
-</div>
 
 ---
 
