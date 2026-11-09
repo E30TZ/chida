@@ -39,139 +39,157 @@
 
 <p align="center">
   <a href="https://github.com/E30TZ/chida" target="_blank" rel="noopener noreferrer" >
-    <img src="docs/shots/editor.png" alt="The Chida editor" width="880" height="auto">
+    <img src="docs/shots/editor.png" alt="The Chida editor: pages on the left, the drawing in the middle, settings on the right" width="880" height="auto">
   </a>
 </p>
+
+<p align="center"><i>This is the editor. You draw on the left and in the middle. Everything else on this page comes out of drawings like this one.</i></p>
 
 ## 📋 Table of Contents
 
 > **Quick Navigation** - Jump to any section below
 
--   [📖 Overview](#-overview)
-    -   [🤔 Why Chida?](#-why-chida)
-        -   [✨ Features](#-features)
--   [🚀 Installation guide](#-installation-guide)
--   [🖼️ Gallery](#-gallery)
+-   [📖 What is Chida?](#-what-is-chida)
+-   [👀 See it](#-see-it)
+-   [✨ What you can do](#-what-you-can-do)
+-   [🚀 Try it now](#-try-it-now)
 -   [⚠️ What is not ready yet](#-what-is-not-ready-yet)
+-   [🛠️ For developers](#-for-developers)
 -   [📚 Documentation](#-documentation)
 -   [📄 License](#-license)
 
 ---
 
-# 📖 Overview
+# 📖 What is Chida?
 
-> **What is Chida?**
+> **One story tells you everything**
 
-Think of a shop. You draw the shop page: a big title, some pictures, a price under each product. Then you tell Chida what a product is: a name, a price, a photo. Then you press one button. Chida gives you back the whole shop as a real app that runs on a computer: the pages you drew, a place that keeps the products, and all the code. The code is yours. You can open it, change it, and put the app on the internet yourself. Nothing is locked inside Chida. Chida is written in Rust, and Persian and Arabic text is shaped and drawn right-to-left in every output.
+Say you want a small shop on the internet. With Chida you do three things:
+
+**1. You draw the shop page.** A big title. Pictures of the products. A price under each one. You drag boxes with the mouse, like in a drawing program.
+
+**2. You say what a product is.** A name, a price, a photo. Three words you type once, in a simple table.
+
+**3. You press one button.** Chida hands you back the whole shop: the pages you drew, a program that keeps the products and takes orders, and **all of its code**. The code is yours. Open it, change it, put it on the internet yourself. Nothing stays locked inside Chida.
+
+That is Chida. A drawing program whose drawings become real apps. It is written in Rust, it is fast and light, and Persian and Arabic text comes out right-to-left and correct in every result.
 
 ---
 
-## 🤔 Why Chida?
+# 👀 See it
 
-> **You draw. You own the code.**
+> **Do not take our word for it. Look.**
 
-A design tool gives you a picture. A site builder gives you a page on their computer, and takes it away when you stop paying. Chida gives you the app itself, as plain source code you own. And you do not need to know how to code to start: Chida opens in a simple mode with big buttons and few choices. When you want more, open the next level. The third level shows everything, even the code.
+Every picture here is real. Chida drew each one from a ready-made project with a single command. None of them is a painting made for this page. The command is written under each picture, so you can make the same picture yourself.
+
+**A big Persian shop, reading right to left** · `chida new shop2 --template digikala`
+
+![Marketplace home](docs/shots/digikala-home.png)
+
+**A Persian page, simple and clean** · `chida new fa --template persian`
+
+![Persian page](docs/shots/persian.png)
+
+**A page that looks like frosted glass** · `chida new glassy --template liquid-glass`
+
+![Liquid glass page](docs/shots/liquid-glass-home.png)
+
+**The same page, on a phone**
+
+![Liquid glass phone page](docs/shots/liquid-glass-mobile.png)
+
+**A control panel for the shop owner** · `chida new panel --template saas-dashboard`
+
+![Dashboard](docs/shots/saas-dashboard.png)
+
+**A small shop** · `chida new demo`
+
+![Demo shop](docs/shots/demo-shop.png)
 
 ---
 
-### ✨ Features
+# ✨ What you can do
+
+> **Four things, each in plain words**
 
 <div align="left">
 
-**🎨 A real editor, in your browser**
-- A design tool with pages, layers, rulers and snap guides
-- Drag, resize, multi-select and marquee select
-- Auto layout, named styles and image upload
-- A full-screen preview where the page links really work
-- Three levels: **Simple**, **Builder**, **Pro** - power stays hidden until you ask for it
-- Your work saves itself in the browser
+**🎨 Draw pages that look real**
+- Pages, layers, rulers and snap guides, like a real design tool
+- Drag, resize, pick many things at once, draw a box to select
+- Boxes line themselves up in rows and columns (auto layout)
+- Save a look once and reuse it everywhere (named styles)
+- Bring your own pictures in
+- Press preview and click around: the page links really work
+- Start in **Simple** mode with big buttons. Open **Builder**, then **Pro**, only when you want more. The last level shows even the code
 
-**📄 Pages become apps**
-- Any page becomes a **PNG picture** or an **SVG file**
-- One command writes the **whole app**: an Axum backend, a Leptos frontend, the SQL schema and an OpenAPI file
-- The apps Chida writes **build and run**; their backends were tested live
+**📄 Turn a drawing into a working app**
+- One press gives you a **PNG picture** or an **SVG file** of any page
+- One command writes the **whole app**: the program behind the pages, the screens people see, the database plan and the API plan
+- The apps Chida writes **build and run**. Their backends were started and tested for real
 
-**🗂️ Data and logic, no code**
-- Tables with typed columns, rules and relations
-- Flows you build from boxes: *if this happens, do that*
-- Actions: go to a page, show a message, save or delete a record, call an API
+**🗂️ Keep lists and make rules, without code**
+- Your shop keeps products, your clinic keeps patients: every list is a table, and you choose its columns (name = text, price = number, and so on)
+- Rules are boxes you connect: *if this happens, then do that*
+- A rule can open a page, show a message, save or delete a row, or call another program
 
-**🌍 Persian and Arabic first**
-- Text is shaped with **HarfBuzz** and drawn right-to-left in PNG, SVG and web output
-- The **Vazirmatn** font ships with Chida
-- Mixed lines keep numbers and Latin words in the right order
-
-**📦 Ready-made starting points**
-- **shop**, **digikala** (a big Persian shop), **persian**, **liquid-glass**, **saas-dashboard**, **clinic**, **restaurant**, **portfolio**, **blank**
-- Every one is a real project with pages, seed data and at least one flow
+**🌍 Type Persian and Arabic the right way**
+- Letters join and shape correctly, text runs right-to-left, in pictures, in SVG and in web pages
+- The **Vazirmatn** font comes inside Chida
+- In a mixed line, numbers and English words stay in the right order
 
 </div>
 
----
-
-# 🚀 Installation guide
-
-> **Quick Start** - Your first page in three steps
-
-### Step 1: get Chida for your computer
-
-Take the file for your system from the [download page](https://github.com/E30TZ/chida/releases/latest):
-
-**Windows:**
-```
-chida-1.0.1-windows-x86_64.zip
-```
-
-**Mac (Apple Silicon):**
-```
-chida-1.0.1-macos-aarch64.tar.gz
-```
-
-**Mac (Intel):**
-```
-chida-1.0.1-macos-x86_64.tar.gz
-```
-
-**Linux:**
-```
-chida-1.0.1-linux-x86_64.tar.gz        (any distro, no install)
-chida-1.0.1-linux-x86_64.AppImage      (one file, no install)
-chida_1.0.1_amd64.deb                  (Debian, Ubuntu)
-chida-1.0.1-1.fc45.x86_64.rpm          (Fedora, RHEL)
-chida-1.0.1-linux-aarch64.tar.gz       (ARM64)
-```
-
-**Any computer with a browser (the editor only):**
-```
-chida-editor-1.0.1.zip
-```
-
-A `SHA256SUMS` file on the same page lets you check that your download arrived whole. Desktop app installers (the editor in its own window) are being built now and will be added to the same page.
+Every project starts from a ready-made one, so you never face an empty page: **shop**, **digikala** (the big Persian shop above), **persian**, **liquid-glass** (the glass page above), **saas-dashboard**, **clinic**, **restaurant**, **portfolio**, **blank**.
 
 ---
 
-### Step 2: make your first page
+# 🚀 Try it now
 
-Open a terminal in the folder where you put Chida and copy these lines, one by one:
+> **Three steps. No account. No payment.**
+
+### Step 1: take the file for your computer
+
+All files live on one page: the [download page](https://github.com/E30TZ/chida/releases/latest). Pick yours:
+
+| Your computer | Take this file | Then what |
+| --- | --- | --- |
+| Windows | `chida-1.0.1-windows-x86_64.zip` | Unzip it, run `chida.exe` |
+| Mac with Apple Silicon | `chida-1.0.1-macos-aarch64.tar.gz` | Unzip it, run `chida` |
+| Mac with Intel | `chida-1.0.1-macos-x86_64.tar.gz` | Unzip it, run `chida` |
+| Linux, any distro | `chida-1.0.1-linux-x86_64.tar.gz` | Unzip it, run `chida`. No install |
+| Linux, one single file | `chida-1.0.1-linux-x86_64.AppImage` | Make it executable, double-click |
+| Debian or Ubuntu | `chida_1.0.1_amd64.deb` | Install it like any program |
+| Fedora or RHEL | `chida-1.0.1-1.fc45.x86_64.rpm` | Install it like any program |
+| Linux on ARM64 | `chida-1.0.1-linux-aarch64.tar.gz` | Unzip it, run `chida` |
+| Only the editor, in a browser | `chida-editor-1.0.1.zip` | Unzip it, open it (note below) |
+
+The `SHA256SUMS` file on the same page lets you check your download arrived whole. Desktop installers (the editor in its own window, no terminal) are being built now and will be added to the same page.
+
+### Step 2: copy two lines
+
+Open a terminal in the folder where you put Chida and paste these two lines, one at a time:
 
 ```bash
 ./chida new myshop --template shop
 ./chida render myshop/myshop.chida.json --out myshop-pictures
 ```
 
-### 📋 After that:
+The first line makes a small shop project. The second line draws its pages as pictures.
+
+### 📋 Step 3: look at what you got
 
 <div align="left">
 
-**🖼️ Open the folder** `myshop-pictures` - the pictures inside are your shop, drawn by Chida
+**🖼️ Open the folder** `myshop-pictures`. The pictures inside are your shop, drawn by Chida. That is the whole idea, working in your hands.
 
-**✏️ Rather click than type?** Unzip `chida-editor-1.0.1.zip` and open the editor in your browser (if the page stays white, serve the folder with any small local web server; browsers do not load the editor straight from a file)
+**✏️ You would rather click than type?** Unzip `chida-editor-1.0.1.zip` and open the editor in your browser. If the page stays white, serve the folder with any small local web server: browsers do not load the editor straight from a file.
 
-**🗂️ Your project is one file:** `myshop/myshop.chida.json` holds the pages, the tables and the flows
+**🗂️ One file is the whole project:** `myshop/myshop.chida.json` holds the pages, the tables and the rules. Move it, copy it, send it to a friend.
 
 </div>
 
-### 🔧 Next Steps:
+### 🔧 Next: get the app itself
 
 ```bash
 # See every ready-made starting point
@@ -183,39 +201,9 @@ Open a terminal in the folder where you put Chida and copy these lines, one by o
 
 ---
 
-# 🖼️ Gallery
-
-Every picture below is real: Chida drew it from a ready project with `chida render`. None of them is a painting made for this page.
-
-**A Persian shop that reads right to left** - `chida new shop2 --template digikala`
-
-![Marketplace home](docs/shots/digikala-home.png)
-
-**A Persian page** - `chida new fa --template persian`
-
-![Persian page](docs/shots/persian.png)
-
-**A small shop** - `chida new demo`
-
-![Demo shop](docs/shots/demo-shop.png)
-
-**A page that looks like frosted glass** - `chida new glassy --template liquid-glass`
-
-![Liquid glass page](docs/shots/liquid-glass-home.png)
-
-**The same page on a phone**
-
-![Liquid glass phone page](docs/shots/liquid-glass-mobile.png)
-
-**A control panel for a shop owner** - `chida new panel --template saas-dashboard`
-
-![Dashboard](docs/shots/saas-dashboard.png)
-
----
-
 # ⚠️ What is not ready yet
 
-> **We say it plainly**
+> **We say it plainly, before you find out the hard way**
 
 <div align="left">
 
