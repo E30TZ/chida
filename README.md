@@ -45,6 +45,10 @@
 
 <p align="center"><i>This is the editor itself. You draw here; Chida builds the rest.</i></p>
 
+<p align="center">
+    <a href="https://e30tz.github.io/chida/" target="_blank"><strong>▶ Try the editor live in your browser</strong></a> - no download, no install.
+</p>
+
 ## 📋 Table of Contents
 
 > **Quick Navigation** - Jump to any section below
