@@ -1,105 +1,205 @@
 <p align="center">
-  <img src="assets/logo/logo-horizontal.svg" width="340" alt="Chida logo">
+  <a href="https://github.com/E30TZ/chida" target="_blank" rel="noopener noreferrer">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="assets/logo/logo-horizontal-dark.svg">
+      <img width="340" src="assets/logo/logo-horizontal.svg" alt="Chida logo">
+    </picture>
+  </a>
 </p>
 
-<h1 align="center">Chida</h1>
+<h1 align="center">🧩 Chida</h1>
 
 <p align="center">
-  <strong>You draw a page. Chida turns it into a real app.</strong>
+    <strong>You draw a page. Chida turns it into a real app.</strong>
+</p>
+
+---
+
+<br/>
+<p align="center">
+    <a href="https://github.com/E30TZ/chida/actions/workflows/ci.yml" target="_blank">
+        <img src="https://img.shields.io/github/actions/workflow/status/E30TZ/chida/ci.yml?style=flat-square" />
+    </a>
+    <a href="https://github.com/E30TZ/chida/releases/latest" target="_blank">
+        <img src="https://img.shields.io/github/v/release/E30TZ/chida?style=flat-square" />
+    </a>
+    <a href="https://github.com/E30TZ/chida/blob/main/LICENSE" target="_blank">
+        <img src="https://img.shields.io/github/license/E30TZ/chida?style=flat-square" />
+    </a>
+    <a href="https://github.com/E30TZ/chida" target="_blank">
+        <img src="https://img.shields.io/github/stars/E30TZ/chida?style=social" />
+    </a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/E30TZ/chida/actions/workflows/ci.yml"><img src="https://github.com/E30TZ/chida/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
-  <a href="https://github.com/E30TZ/chida/releases/latest"><img src="https://img.shields.io/github/v/release/E30TZ/chida" alt="Latest release"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="MIT license"></a>
+ <a href="./README-fa.md">
+ 🇮🇷 فارسی
+ </a>
 </p>
 
 <p align="center">
-  <strong>English</strong> · <a href="README.fa.md">فارسی</a>
+  <a href="https://github.com/E30TZ/chida" target="_blank" rel="noopener noreferrer" >
+    <img src="docs/shots/editor.png" alt="The Chida editor" width="880" height="auto">
+  </a>
 </p>
 
-<p align="center">
-  <img src="docs/shots/editor.png" width="880" alt="The Chida editor">
-</p>
+## 📋 Table of Contents
 
-<p align="center"><em>This is Chida. You move boxes, text and pictures onto the page, like in a drawing program.</em></p>
+> **Quick Navigation** - Jump to any section below
 
-## What is Chida?
+-   [📖 Overview](#-overview)
+    -   [🤔 Why Chida?](#-why-chida)
+        -   [✨ Features](#-features)
+-   [🚀 Installation guide](#-installation-guide)
+-   [🖼️ Gallery](#-gallery)
+-   [⚠️ What is not ready yet](#-what-is-not-ready-yet)
+-   [📚 Documentation](#-documentation)
+-   [📄 License](#-license)
 
-Think of a shop.
+---
 
-You draw the shop page: a big title, some pictures, a price under each
-product. Then you tell Chida what a product is: a name, a price, a photo.
-Then you press one button.
+# 📖 Overview
 
-Chida gives you back the whole shop as a real app that runs on a
-computer: the pages you drew, a place that keeps the products, and all
-the code. The code is yours. You can open it, change it, and put the app
-on the internet yourself. Nothing is locked inside Chida.
+> **What is Chida?**
 
-That is the whole idea: **you draw, Chida builds.**
+Think of a shop. You draw the shop page: a big title, some pictures, a price under each product. Then you tell Chida what a product is: a name, a price, a photo. Then you press one button. Chida gives you back the whole shop as a real app that runs on a computer: the pages you drew, a place that keeps the products, and all the code. The code is yours. You can open it, change it, and put the app on the internet yourself. Nothing is locked inside Chida. Chida is written in Rust, and Persian and Arabic text is shaped and drawn right-to-left in every output.
 
-You do not need to know how to code. Chida starts in a simple mode with
-big buttons and few choices. When you want more, you can open the next
-level and do more. The third level shows everything, even the code.
+---
 
-## Start here: 3 steps
+## 🤔 Why Chida?
 
-**Step 1: get Chida.**
-Go to the [download page](https://github.com/E30TZ/chida/releases/latest)
-and take the file for your computer:
+> **You draw. You own the code.**
 
-- Windows: the file that ends in `.zip`
-- Mac: the file with `macos` in its name
-- Linux: the `.tar.gz` file, or the package for your system (`.deb`,
-  `.rpm`, `.AppImage`)
+A design tool gives you a picture. A site builder gives you a page on their computer, and takes it away when you stop paying. Chida gives you the app itself, as plain source code you own. And you do not need to know how to code to start: Chida opens in a simple mode with big buttons and few choices. When you want more, open the next level. The third level shows everything, even the code.
 
-**Step 2: make your first page.**
-Open a terminal in the folder where you put Chida and copy these lines,
-one by one:
+---
 
-```sh
+### ✨ Features
+
+<div align="left">
+
+**🎨 A real editor, in your browser**
+- A design tool with pages, layers, rulers and snap guides
+- Drag, resize, multi-select and marquee select
+- Auto layout, named styles and image upload
+- A full-screen preview where the page links really work
+- Three levels: **Simple**, **Builder**, **Pro** - power stays hidden until you ask for it
+- Your work saves itself in the browser
+
+**📄 Pages become apps**
+- Any page becomes a **PNG picture** or an **SVG file**
+- One command writes the **whole app**: an Axum backend, a Leptos frontend, the SQL schema and an OpenAPI file
+- The apps Chida writes **build and run**; their backends were tested live
+
+**🗂️ Data and logic, no code**
+- Tables with typed columns, rules and relations
+- Flows you build from boxes: *if this happens, do that*
+- Actions: go to a page, show a message, save or delete a record, call an API
+
+**🌍 Persian and Arabic first**
+- Text is shaped with **HarfBuzz** and drawn right-to-left in PNG, SVG and web output
+- The **Vazirmatn** font ships with Chida
+- Mixed lines keep numbers and Latin words in the right order
+
+**📦 Ready-made starting points**
+- **shop**, **digikala** (a big Persian shop), **persian**, **liquid-glass**, **saas-dashboard**, **clinic**, **restaurant**, **portfolio**, **blank**
+- Every one is a real project with pages, seed data and at least one flow
+
+</div>
+
+---
+
+# 🚀 Installation guide
+
+> **Quick Start** - Your first page in three steps
+
+### Step 1: get Chida for your computer
+
+Take the file for your system from the [download page](https://github.com/E30TZ/chida/releases/latest):
+
+**Windows:**
+```
+chida-1.0.1-windows-x86_64.zip
+```
+
+**Mac (Apple Silicon):**
+```
+chida-1.0.1-macos-aarch64.tar.gz
+```
+
+**Mac (Intel):**
+```
+chida-1.0.1-macos-x86_64.tar.gz
+```
+
+**Linux:**
+```
+chida-1.0.1-linux-x86_64.tar.gz        (any distro, no install)
+chida-1.0.1-linux-x86_64.AppImage      (one file, no install)
+chida_1.0.1_amd64.deb                  (Debian, Ubuntu)
+chida-1.0.1-1.fc45.x86_64.rpm          (Fedora, RHEL)
+chida-1.0.1-linux-aarch64.tar.gz       (ARM64)
+```
+
+**Any computer with a browser (the editor only):**
+```
+chida-editor-1.0.1.zip
+```
+
+A `SHA256SUMS` file on the same page lets you check that your download arrived whole. Desktop app installers (the editor in its own window) are being built now and will be added to the same page.
+
+---
+
+### Step 2: make your first page
+
+Open a terminal in the folder where you put Chida and copy these lines, one by one:
+
+```bash
 ./chida new myshop --template shop
 ./chida render myshop/myshop.chida.json --out myshop-pictures
 ```
 
-Now open the folder `myshop-pictures`. The pictures inside are your
-shop, drawn by Chida.
+### 📋 After that:
 
-**Step 3: get the full app.**
-Copy this line:
+<div align="left">
 
-```sh
+**🖼️ Open the folder** `myshop-pictures` - the pictures inside are your shop, drawn by Chida
+
+**✏️ Rather click than type?** Unzip `chida-editor-1.0.1.zip` and open the editor in your browser (if the page stays white, serve the folder with any small local web server; browsers do not load the editor straight from a file)
+
+**🗂️ Your project is one file:** `myshop/myshop.chida.json` holds the pages, the tables and the flows
+
+</div>
+
+### 🔧 Next Steps:
+
+```bash
+# See every ready-made starting point
+./chida templates
+
+# Get the whole app, with all its code
 ./chida generate myshop/myshop.chida.json --out myshop-app
 ```
 
-The folder `myshop-app` is your whole shop app, with all its code.
+---
 
-**Rather click than type?** Download `chida-editor-1.0.1.zip` from the
-same page, unzip it, and open the editor in your browser. (If the page
-stays white, serve the folder with any small local web server; browsers
-do not load the editor straight from a file.)
+# 🖼️ Gallery
 
-## What can you make?
+Every picture below is real: Chida drew it from a ready project with `chida render`. None of them is a painting made for this page.
 
-A shop. A page for a restaurant, with a menu and a table booking form. A
-clinic page where people book a visit. A page about you and your work.
-The pictures below are real. Chida drew every one of them from a ready
-project; they are not paintings made for this page.
-
-**A Persian shop that reads right to left**
+**A Persian shop that reads right to left** - `chida new shop2 --template digikala`
 
 ![Marketplace home](docs/shots/digikala-home.png)
 
-**A Persian page**
+**A Persian page** - `chida new fa --template persian`
 
 ![Persian page](docs/shots/persian.png)
 
-**A small shop**
+**A small shop** - `chida new demo`
 
 ![Demo shop](docs/shots/demo-shop.png)
 
-**A page that looks like frosted glass**
+**A page that looks like frosted glass** - `chida new glassy --template liquid-glass`
 
 ![Liquid glass page](docs/shots/liquid-glass-home.png)
 
@@ -107,83 +207,34 @@ project; they are not paintings made for this page.
 
 ![Liquid glass phone page](docs/shots/liquid-glass-mobile.png)
 
-**A control panel for a shop owner**
+**A control panel for a shop owner** - `chida new panel --template saas-dashboard`
 
 ![Dashboard](docs/shots/saas-dashboard.png)
 
-## Ready-made starting points
+---
 
-You do not start from a blank page unless you want to. Each name below
-is a ready project. Use it like in step 2, for example
-`./chida new myfood --template restaurant`.
+# ⚠️ What is not ready yet
 
-- `shop` : a shop with a home page and an owner page
-- `digikala` : a big Persian shop, like the picture above
-- `persian` : one simple Persian page
-- `liquid-glass` : pages that look like frosted glass
-- `saas-dashboard` : a control panel with numbers and lists
-- `clinic` : doctors and booking a visit
-- `restaurant` : dishes, a menu and booking a table
-- `portfolio` : your work, shown in a grid
-- `blank` : one empty page
+> **We say it plainly**
 
-Run `./chida templates` to see this list on your own computer.
+<div align="left">
 
-## Download table
+-   The app Chida makes for you keeps its lists in memory. When the app stops, the lists start again from the seed data. Saving to a real database is the next big job.
+-   Passwords in the apps Chida makes are locked with a simple method for now, and the code says so itself, in the open. Do not use it for real people's passwords yet.
+-   Very long texts that mix Persian and English in one box can come out in a slightly wrong order. Titles, prices and normal lines are fine.
+-   The desktop window works but is new; its ready installers are still being built.
 
-The same files as step 1, with exact names (version 1.0.1). The file
-`SHA256SUMS` on the download page lets you check that a file arrived
-whole.
+</div>
 
-| Your computer | File to take | What you get |
-| --- | --- | --- |
-| Linux (x86_64) | `chida-1.0.1-linux-x86_64.tar.gz` | Chida in a folder, no install |
-| Linux (x86_64) | `chida-1.0.1-linux-x86_64.AppImage` | One file; make it runnable and open it |
-| Debian, Ubuntu | `chida_1.0.1_amd64.deb` | A package your system can install |
-| Fedora, RHEL | `chida-1.0.1-1.fc45.x86_64.rpm` | A package your system can install |
-| Linux (ARM64) | `chida-1.0.1-linux-aarch64.tar.gz` | Chida in a folder, no install |
-| Windows | `chida-1.0.1-windows-x86_64.zip` | Chida in a folder, no install |
-| Mac, Apple Silicon | `chida-1.0.1-macos-aarch64.tar.gz` | Chida in a folder, no install |
-| Mac, Intel | `chida-1.0.1-macos-x86_64.tar.gz` | Chida in a folder, no install |
-| Any computer with a browser | `chida-editor-1.0.1.zip` | The editor, as web pages |
+---
 
-Desktop app installers (the editor in its own window) are being built
-now and will be added to the same download page.
+# 🛠️ For developers
 
-## What is not ready yet
+Chida itself is a Rust workspace. A project is one JSON file (`name.chida.json`). The renderer shapes text with HarfBuzz (rustybuzz) and rasterises with fontdue. The app Chida writes for you is an Axum backend with one CRUD route set per table plus sign-up and login, a Leptos frontend with one component per page, the SQL schema, an OpenAPI 3 file, a static HTML preview, a Dockerfile and a systemd unit.
 
-We say it plainly:
-
-- The app Chida makes for you keeps its products and lists in memory.
-  When the app stops, the lists start again from the seed data. Saving
-  to a real database is the next big job.
-- Passwords in the apps Chida makes are locked with a simple method for
-  now. The code says so itself, in the open. Do not use it for real
-  people's passwords yet.
-- Very long texts that mix Persian and English in one box can come out
-  in a slightly wrong order. Titles, prices and normal lines are fine.
-- The desktop window works but is new: the ready installers for it are
-  still being built (see above).
-
-## For developers
-
-Chida is written in Rust. A project is one JSON file
-(`name.chida.json`) that holds the pages, the data tables and the logic
-flows. The renderer turns any page into PNG and SVG; the text is shaped
-with HarfBuzz (rustybuzz) and drawn with fontdue, with the Vazirmatn font
-bundled for Persian and Arabic.
-
-The app that Chida writes for you is a Rust workspace: an Axum backend
-with one CRUD route set per table plus sign-up and login, a Leptos
-frontend with one component per page, the SQL schema, an OpenAPI 3 file,
-a static HTML preview, a Dockerfile and a systemd unit. The generated
-backends build with `cargo build` and were tested live: `/health`
-answers and `/api/products` returns the seed products.
-
-```sh
+```bash
 cargo build --release   # build Chida itself
 cargo test              # 73 tests
-./target/release/chida templates
 ```
 
 ```text
@@ -193,18 +244,40 @@ crates/chida-db       tables, rules, SQL writing
 crates/chida-logic    the flow engine (if this, then that)
 crates/chida-codegen  writes the whole app for you
 crates/chida-cli      the chida command
-apps/editor           the editor you see in the picture (Leptos, WebAssembly)
+apps/editor           the editor in the picture above (Leptos, WebAssembly)
 apps/desktop          the editor in a desktop window (Tauri 2)
 templates             the ready-made starting points
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) if you want to help. Bug reports
-and ideas for new starting points are welcome.
+---
 
-## License
+# 📚 Documentation
 
-MIT. See [LICENSE](LICENSE). You can use Chida for free, also for paid
-work.
+<div align="left">
 
-The Vazirmatn font that ships with Chida is under the SIL Open Font
-License 1.1. DejaVu Sans is the backup font.
+**📖 This page in other languages:**
+
+🇮🇷 **[فارسی](./README-fa.md)**
+
+**📂 More in this repo:**
+
+-   [Changelog](./CHANGELOG.md) - what changed in each version
+-   [Contributing](./CONTRIBUTING.md) - how to help
+-   [Templates](./templates/README.md) - every starting point in detail
+-   [Desktop app](./apps/desktop/README.md) - build the desktop window yourself
+
+</div>
+
+---
+
+# 📄 License
+
+MIT. See [LICENSE](./LICENSE). You can use Chida for free, also for paid work.
+
+The Vazirmatn font that ships with Chida is under the SIL Open Font License 1.1. DejaVu Sans is the backup font.
+
+---
+
+<p align="center">
+  Made with ❤️ and Rust
+</p>
