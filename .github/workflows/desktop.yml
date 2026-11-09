@@ -78,7 +78,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          find apps/desktop/src-tauri/target/release/bundle -type f \
-            \( -name "*.deb" -o -name "*.AppImage" -o -name "*.rpm" \
-               -o -name "*.exe" -o -name "*.dmg" \) -print0 |
-            xargs -0 gh release upload v1.0.1 --clobber
+          mkdir -p release-files
+          for f in $(find apps/desktop/src-tauri/target/release/bundle -type f \( -name "*.deb" -o -name "*.AppImage" -o -name "*.rpm" -o -name "*.exe" -o -name "*.dmg" \)); do
+            base=$(basename "$f")
+            case "$base" in *.deb|*.AppImage) base=$(echo "$base" | sed 's/^Chida_/Chida-desktop_/');; esac
+            cp "$f" "release-files/$base"
+          done
+          gh release upload v1.0.1 release-files/* --clobber
