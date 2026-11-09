@@ -95,8 +95,14 @@ impl Gradient {
             to,
             angle,
             stops: vec![
-                GradientStop { offset: 0.0, color: from },
-                GradientStop { offset: 1.0, color: to },
+                GradientStop {
+                    offset: 0.0,
+                    color: from,
+                },
+                GradientStop {
+                    offset: 1.0,
+                    color: to,
+                },
             ],
         }
     }
@@ -105,24 +111,43 @@ impl Gradient {
         for stop in &mut stops {
             stop.offset = stop.offset.clamp(0.0, 1.0);
         }
-        stops.sort_by(|a, b| a.offset.partial_cmp(&b.offset).unwrap_or(std::cmp::Ordering::Equal));
+        stops.sort_by(|a, b| {
+            a.offset
+                .partial_cmp(&b.offset)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         if stops.len() < 2 {
             return Self::new(Color::BLACK, Color::WHITE, angle);
         }
         let from = stops.first().unwrap().color;
         let to = stops.last().unwrap().color;
-        Self { from, to, angle, stops }
+        Self {
+            from,
+            to,
+            angle,
+            stops,
+        }
     }
     /// Effective stops, synthesising the legacy two colour form.
     pub fn stops(&self) -> Vec<GradientStop> {
         if self.stops.len() >= 2 {
             let mut stops = self.stops.clone();
-            stops.sort_by(|a, b| a.offset.partial_cmp(&b.offset).unwrap_or(std::cmp::Ordering::Equal));
+            stops.sort_by(|a, b| {
+                a.offset
+                    .partial_cmp(&b.offset)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
             stops
         } else {
             vec![
-                GradientStop { offset: 0.0, color: self.from },
-                GradientStop { offset: 1.0, color: self.to },
+                GradientStop {
+                    offset: 0.0,
+                    color: self.from,
+                },
+                GradientStop {
+                    offset: 1.0,
+                    color: self.to,
+                },
             ]
         }
     }
@@ -133,7 +158,13 @@ impl Gradient {
         let stops = self
             .stops()
             .iter()
-            .map(|s| format!("{} {}%", s.color.to_hex(), (s.offset.clamp(0.0, 1.0) * 100.0).round()))
+            .map(|s| {
+                format!(
+                    "{} {}%",
+                    s.color.to_hex(),
+                    (s.offset.clamp(0.0, 1.0) * 100.0).round()
+                )
+            })
             .collect::<Vec<_>>()
             .join(", ");
         format!("linear-gradient({}deg, {})", self.angle, stops)
@@ -151,7 +182,12 @@ impl Gradient {
                 let span = (b.offset - a.offset).max(f32::EPSILON);
                 let local = (t - a.offset) / span;
                 let mix = |x: u8, y: u8| (x as f32 + (y as f32 - x as f32) * local).round() as u8;
-                return Color::rgba(mix(a.color.r, b.color.r), mix(a.color.g, b.color.g), mix(a.color.b, b.color.b), mix(a.color.a, b.color.a));
+                return Color::rgba(
+                    mix(a.color.r, b.color.r),
+                    mix(a.color.g, b.color.g),
+                    mix(a.color.b, b.color.b),
+                    mix(a.color.a, b.color.a),
+                );
             }
         }
         stops[stops.len() - 1].color
@@ -253,13 +289,31 @@ pub struct PathPoint {
 }
 impl PathPoint {
     pub fn anchor(x: f32, y: f32) -> Self {
-        Self { x, y, in_x: None, in_y: None, out_x: None, out_y: None }
+        Self {
+            x,
+            y,
+            in_x: None,
+            in_y: None,
+            out_x: None,
+            out_y: None,
+        }
     }
     pub fn smooth(x: f32, y: f32, in_point: (f32, f32), out_point: (f32, f32)) -> Self {
-        Self { x, y, in_x: Some(in_point.0), in_y: Some(in_point.1), out_x: Some(out_point.0), out_y: Some(out_point.1) }
+        Self {
+            x,
+            y,
+            in_x: Some(in_point.0),
+            in_y: Some(in_point.1),
+            out_x: Some(out_point.0),
+            out_y: Some(out_point.1),
+        }
     }
-    pub fn in_point(&self) -> Option<(f32, f32)> { self.in_x.zip(self.in_y) }
-    pub fn out_point(&self) -> Option<(f32, f32)> { self.out_x.zip(self.out_y) }
+    pub fn in_point(&self) -> Option<(f32, f32)> {
+        self.in_x.zip(self.in_y)
+    }
+    pub fn out_point(&self) -> Option<(f32, f32)> {
+        self.out_x.zip(self.out_y)
+    }
 }
 
 /// Auto-layout direction for a container node. `None` keeps the
@@ -570,13 +624,7 @@ impl Node {
                 (width, height)
             }
             LayoutDirection::Column => {
-                let width = pl
-                    + pr
-                    + self
-                        .children
-                        .iter()
-                        .map(|c| c.width)
-                        .fold(0.0f32, f32::max);
+                let width = pl + pr + self.children.iter().map(|c| c.width).fold(0.0f32, f32::max);
                 let height = pt
                     + pb
                     + self.children.iter().map(|c| c.height).sum::<f32>()
@@ -718,8 +766,8 @@ impl Node {
         let (cx, cy) = (width / 2.0, height / 2.0);
         let points = (0..sides)
             .map(|i| {
-                let a = -std::f32::consts::FRAC_PI_2
-                    + i as f32 * std::f32::consts::TAU / sides as f32;
+                let a =
+                    -std::f32::consts::FRAC_PI_2 + i as f32 * std::f32::consts::TAU / sides as f32;
                 PathPoint::anchor(cx + cx * a.cos(), cy + cy * a.sin())
             })
             .collect();
@@ -923,12 +971,11 @@ impl Node {
         let align = self.layout_align;
         let justify = self.layout_justify;
         let mut resized: Vec<usize> = Vec::new();
-        let mark_resized =
-            |resized: &mut Vec<usize>, i: usize, child: &Node, old: (f32, f32)| {
-                if (child.width, child.height) != old && !resized.contains(&i) {
-                    resized.push(i);
-                }
-            };
+        let mark_resized = |resized: &mut Vec<usize>, i: usize, child: &Node, old: (f32, f32)| {
+            if (child.width, child.height) != old && !resized.contains(&i) {
+                resized.push(i);
+            }
+        };
 
         match self.layout_direction {
             LayoutDirection::Row => {
@@ -979,10 +1026,7 @@ impl Node {
                     } else {
                         row_width + gap + child.width
                     };
-                    if self.layout_wrap
-                        && !rows.last().unwrap().is_empty()
-                        && needed > inner_w
-                    {
+                    if self.layout_wrap && !rows.last().unwrap().is_empty() && needed > inner_w {
                         rows.push(Vec::new());
                         row_width = child.width;
                     } else {
@@ -1002,12 +1046,17 @@ impl Node {
                     let sum_w: f32 = row.iter().map(|&i| self.children[i].width).sum();
                     let (start_x, step_gap) = match justify {
                         LayoutJustify::Start => (pl, gap),
-                        LayoutJustify::Center => {
-                            (pl + (inner_w - sum_w - gap * (row.len().saturating_sub(1) as f32)).max(0.0) / 2.0, gap)
-                        }
-                        LayoutJustify::End => {
-                            (pl + (inner_w - sum_w - gap * (row.len().saturating_sub(1) as f32)).max(0.0), gap)
-                        }
+                        LayoutJustify::Center => (
+                            pl + (inner_w - sum_w - gap * (row.len().saturating_sub(1) as f32))
+                                .max(0.0)
+                                / 2.0,
+                            gap,
+                        ),
+                        LayoutJustify::End => (
+                            pl + (inner_w - sum_w - gap * (row.len().saturating_sub(1) as f32))
+                                .max(0.0),
+                            gap,
+                        ),
                         LayoutJustify::SpaceBetween => {
                             if row.len() > 1 {
                                 (pl, ((inner_w - sum_w) / (row.len() - 1) as f32).max(0.0))
@@ -1049,11 +1098,10 @@ impl Node {
                         .filter(|c| c.height_mode != AxisSizing::Fill)
                         .map(|c| c.height)
                         .sum();
-                    let each = ((inner_h
-                        - fixed
-                        - gap * (self.children.len().saturating_sub(1) as f32))
-                        / fill_count as f32)
-                        .max(0.0);
+                    let each =
+                        ((inner_h - fixed - gap * (self.children.len().saturating_sub(1) as f32))
+                            / fill_count as f32)
+                            .max(0.0);
                     for (i, child) in self.children.iter_mut().enumerate() {
                         let old = (child.width, child.height);
                         if child.height_mode == AxisSizing::Fill {
@@ -1076,15 +1124,27 @@ impl Node {
                 let sum_h: f32 = self.children.iter().map(|c| c.height).sum();
                 let (start_y, step_gap) = match justify {
                     LayoutJustify::Start => (pt, gap),
-                    LayoutJustify::Center => {
-                        (pt + (inner_h - sum_h - gap * (self.children.len().saturating_sub(1) as f32)).max(0.0) / 2.0, gap)
-                    }
-                    LayoutJustify::End => {
-                        (pt + (inner_h - sum_h - gap * (self.children.len().saturating_sub(1) as f32)).max(0.0), gap)
-                    }
+                    LayoutJustify::Center => (
+                        pt + (inner_h
+                            - sum_h
+                            - gap * (self.children.len().saturating_sub(1) as f32))
+                            .max(0.0)
+                            / 2.0,
+                        gap,
+                    ),
+                    LayoutJustify::End => (
+                        pt + (inner_h
+                            - sum_h
+                            - gap * (self.children.len().saturating_sub(1) as f32))
+                            .max(0.0),
+                        gap,
+                    ),
                     LayoutJustify::SpaceBetween => {
                         if self.children.len() > 1 {
-                            (pt, ((inner_h - sum_h) / (self.children.len() - 1) as f32).max(0.0))
+                            (
+                                pt,
+                                ((inner_h - sum_h) / (self.children.len() - 1) as f32).max(0.0),
+                            )
                         } else {
                             (pt, gap)
                         }
@@ -1595,7 +1655,10 @@ mod tests {
         node.letter_spacing = 2.0;
         let back = Project::from_json(&p.to_json().unwrap()).unwrap();
         assert_eq!(p, back);
-        let g = back.pages[0].root.children[0].fill_gradient.clone().unwrap();
+        let g = back.pages[0].root.children[0]
+            .fill_gradient
+            .clone()
+            .unwrap();
         assert_eq!(g.at(0.0), Color::rgb(10, 20, 30));
         assert_eq!(g.at(1.0), Color::WHITE);
         assert_eq!(g.at(0.5).g, 138);
@@ -1723,7 +1786,17 @@ mod tests {
         assert!(d.starts_with('M'));
         assert!(d.trim_end().ends_with('Z'));
         assert!(poly.flattened_path(0.0, 0.0).len() >= 5);
-        let star = Node::star("s", "Star", 0.0, 0.0, 100.0, 100.0, 5, 0.5, Color::rgb(1, 2, 3));
+        let star = Node::star(
+            "s",
+            "Star",
+            0.0,
+            0.0,
+            100.0,
+            100.0,
+            5,
+            0.5,
+            Color::rgb(1, 2, 3),
+        );
         assert_eq!(star.path_points.len(), 10);
         let mut arrow = Node::new("a", "Arrow", NodeKind::Arrow, 0.0, 0.0, 100.0, 20.0);
         arrow.path_points = vec![PathPoint::anchor(0.0, 10.0), PathPoint::anchor(100.0, 10.0)];
@@ -1754,14 +1827,22 @@ mod tests {
         // A three stop gradient round trips and interpolates.
         let g3 = Gradient::with_stops(
             vec![
-                GradientStop { offset: 0.0, color: Color::rgb(255, 0, 0) },
-                GradientStop { offset: 0.5, color: Color::rgb(0, 255, 0) },
-                GradientStop { offset: 1.0, color: Color::rgb(0, 0, 255) },
+                GradientStop {
+                    offset: 0.0,
+                    color: Color::rgb(255, 0, 0),
+                },
+                GradientStop {
+                    offset: 0.5,
+                    color: Color::rgb(0, 255, 0),
+                },
+                GradientStop {
+                    offset: 1.0,
+                    color: Color::rgb(0, 0, 255),
+                },
             ],
             45.0,
         );
-        let back: Gradient =
-            serde_json::from_str(&serde_json::to_string(&g3).unwrap()).unwrap();
+        let back: Gradient = serde_json::from_str(&serde_json::to_string(&g3).unwrap()).unwrap();
         assert_eq!(back.stops().len(), 3);
         assert_eq!(back.at(0.5), Color::rgb(0, 255, 0));
         assert!(back.css().contains("50%"));
@@ -1792,8 +1873,7 @@ mod tests {
         assert!(back.shadows[0].enabled);
         // New list form round trips with several entries.
         node.shadows.push(Shadow::soft());
-        let back2: Node =
-            serde_json::from_str(&serde_json::to_string(&node).unwrap()).unwrap();
+        let back2: Node = serde_json::from_str(&serde_json::to_string(&node).unwrap()).unwrap();
         assert_eq!(back2.shadows.len(), 2);
     }
 
@@ -1842,7 +1922,15 @@ mod tests {
             name: "Card".into(),
             root: master,
         });
-        let mut inst = Node::new("inst-1", "Card", NodeKind::Component, 30.0, 40.0, 200.0, 100.0);
+        let mut inst = Node::new(
+            "inst-1",
+            "Card",
+            NodeKind::Component,
+            30.0,
+            40.0,
+            200.0,
+            100.0,
+        );
         inst.component = Some("comp-1".into());
         inst.fill = Some(Color::rgb(200, 0, 0));
         inst.props
@@ -1885,4 +1973,3 @@ mod tests {
         assert_eq!((root.children[1].x, root.children[1].y), (200.0, 20.0));
     }
 }
-

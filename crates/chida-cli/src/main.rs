@@ -211,11 +211,7 @@ fn cmd_wp_import(args: &[String]) -> Result<(), String> {
 }
 
 /// Recursively collect a theme directory into the flat file map.
-fn collect_dir(
-    base: &Path,
-    dir: &Path,
-    out: &mut chida_wp::ThemeFiles,
-) -> std::io::Result<()> {
+fn collect_dir(base: &Path, dir: &Path, out: &mut chida_wp::ThemeFiles) -> std::io::Result<()> {
     for entry in std::fs::read_dir(dir)? {
         let entry = entry?;
         let path = entry.path();
@@ -230,10 +226,10 @@ fn collect_dir(
 }
 
 fn cmd_wp_export(args: &[String]) -> Result<(), String> {
-    let input = positional(args, 0)
-        .ok_or("usage: chida wp-export <project.chida.json> <out-theme.zip>")?;
-    let output = positional(args, 1)
-        .ok_or("usage: chida wp-export <project.chida.json> <out-theme.zip>")?;
+    let input =
+        positional(args, 0).ok_or("usage: chida wp-export <project.chida.json> <out-theme.zip>")?;
+    let output =
+        positional(args, 1).ok_or("usage: chida wp-export <project.chida.json> <out-theme.zip>")?;
     let file = ProjectFile::load(Path::new(&input)).map_err(|e| e.to_string())?;
     let theme_files = chida_wp::export_theme(&file.project);
     let zip = chida_wp::write_zip(&theme_files)?;

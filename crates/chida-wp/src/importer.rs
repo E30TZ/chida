@@ -54,7 +54,11 @@ pub fn import_theme(files: &ThemeFiles) -> Result<ImportedTheme, String> {
     } else {
         slugify(&sheet.header.name)
     };
-    let slug = if slug.is_empty() { "theme".to_string() } else { slug };
+    let slug = if slug.is_empty() {
+        "theme".to_string()
+    } else {
+        slug
+    };
     let name = if sheet.header.name.is_empty() {
         slug.clone()
     } else {
@@ -74,7 +78,9 @@ pub fn import_theme(files: &ThemeFiles) -> Result<ImportedTheme, String> {
     project.meta.insert("wp_slug".into(), slug.clone());
     project.meta.insert("wp_text_domain".into(), text_domain);
     if !sheet.header.version.is_empty() {
-        project.meta.insert("wp_version".into(), sheet.header.version.clone());
+        project
+            .meta
+            .insert("wp_version".into(), sheet.header.version.clone());
     }
     let mut theme = Theme::default();
     if let Some(bg) = body_style.background {
@@ -112,7 +118,14 @@ pub fn import_theme(files: &ThemeFiles) -> Result<ImportedTheme, String> {
             body_color: body_style.color,
         };
         let mut ancestors = Vec::new();
-        let nodes = convert_children(&dom, &mut ancestors, 1200.0, false, body_style.color, &mut conv);
+        let nodes = convert_children(
+            &dom,
+            &mut ancestors,
+            1200.0,
+            false,
+            body_style.color,
+            &mut conv,
+        );
         let mut page = Page::new(*id, *page_name, *route, 1200.0, 900.0);
         page.background = body_style.background.or(Some(Color::WHITE));
         page.root.layout_direction = LayoutDirection::Column;
@@ -162,7 +175,8 @@ fn normalize_root(files: &ThemeFiles) -> (String, ThemeFiles) {
         .iter()
         .filter(|(k, _)| !k.starts_with("__MACOSX"))
         .filter_map(|(k, v)| {
-            k.strip_prefix(&root).map(|rest| (rest.to_string(), v.clone()))
+            k.strip_prefix(&root)
+                .map(|rest| (rest.to_string(), v.clone()))
         })
         .collect();
     (root, stripped)
@@ -222,7 +236,12 @@ fn preprocess(
             continue;
         }
         out.push_str(&rest[..start]);
-        let code_start = start + if rest[start..].starts_with("<?=") { 3 } else { 5 };
+        let code_start = start
+            + if rest[start..].starts_with("<?=") {
+                3
+            } else {
+                5
+            };
         let after = &rest[code_start..];
         let (code, next) = match after.find("?>") {
             Some(end) => (&after[..end], &after[end + 2..]),
@@ -404,7 +423,11 @@ fn classify(
     } else if low.contains("home_url(") {
         Some("{{site_url}}")
     } else if low.contains("bloginfo(") || low.contains("get_bloginfo(") {
-        match quoted_strings(code).first().map(|s| s.to_lowercase()).as_deref() {
+        match quoted_strings(code)
+            .first()
+            .map(|s| s.to_lowercase())
+            .as_deref()
+        {
             Some("name") | Some("title") => Some("{{site_title}}"),
             Some("description") => Some("{{site_tagline}}"),
             Some("url") | Some("home") | Some("siteurl") => Some("{{site_url}}"),
@@ -509,8 +532,8 @@ impl Conv<'_> {
 const SKIP_TAGS: &[&str] = &["head", "script", "style", "title", "meta", "link", "base"];
 const TRANSPARENT_TAGS: &[&str] = &["html", "body"];
 const INLINE_TAGS: &[&str] = &[
-    "span", "a", "strong", "em", "b", "i", "small", "code", "u", "s", "sub", "sup", "abbr",
-    "mark", "time", "label",
+    "span", "a", "strong", "em", "b", "i", "small", "code", "u", "s", "sub", "sup", "abbr", "mark",
+    "time", "label",
 ];
 
 fn convert_children(
@@ -544,8 +567,19 @@ fn convert_children(
             }
             DomChild::El(el) => {
                 if TRANSPARENT_TAGS.contains(&el.tag.as_str()) {
-                    ancestors.push((el.tag.clone(), el.classes(), el.attr("id").map(|s| s.to_string())));
-                    out.extend(convert_children(el, ancestors, avail_w, in_row, inherited_color, conv));
+                    ancestors.push((
+                        el.tag.clone(),
+                        el.classes(),
+                        el.attr("id").map(|s| s.to_string()),
+                    ));
+                    out.extend(convert_children(
+                        el,
+                        ancestors,
+                        avail_w,
+                        in_row,
+                        inherited_color,
+                        conv,
+                    ));
                     ancestors.pop();
                 } else if let Some(node) =
                     convert_element(el, ancestors, avail_w, in_row, inherited_color, conv)
@@ -584,14 +618,19 @@ fn convert_element(
         "chida-menu" => {
             // Menu items are anchors: a rule like `.main-nav a`
             // colours them, so resolve that style for the items.
-            let link_color = conv
-                .sheet
-                .resolve("a", &[], None, ancestors, None)
-                .color;
+            let link_color = conv.sheet.resolve("a", &[], None, ancestors, None).color;
             Some(menu_node(conv, &style, avail_w, inner_color, link_color))
         }
         "hr" => {
-            let mut n = Node::new(conv.next_id(), "خط", NodeKind::Divider, 0.0, 0.0, avail_w, 2.0);
+            let mut n = Node::new(
+                conv.next_id(),
+                "خط",
+                NodeKind::Divider,
+                0.0,
+                0.0,
+                avail_w,
+                2.0,
+            );
             n.fill = Some(Color::rgb(200, 204, 208));
             Some(n)
         }
@@ -603,9 +642,14 @@ fn convert_element(
             Some(n)
         }
         "button" => Some(button_node(conv, el, &style, avail_w)),
-        "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "p" | "figcaption" => {
-            Some(text_block_node(conv, el, &style, avail_w, in_row, inner_color))
-        }
+        "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "p" | "figcaption" => Some(text_block_node(
+            conv,
+            el,
+            &style,
+            avail_w,
+            in_row,
+            inner_color,
+        )),
         _ if INLINE_TAGS.contains(&tag) => {
             Some(inline_node(conv, el, &style, avail_w, in_row, inner_color))
         }
@@ -667,7 +711,11 @@ fn fill_container(
     inner_color: Option<Color>,
     conv: &mut Conv,
 ) {
-    ancestors.push((el.tag.clone(), el.classes(), el.attr("id").map(|s| s.to_string())));
+    ancestors.push((
+        el.tag.clone(),
+        el.classes(),
+        el.attr("id").map(|s| s.to_string()),
+    ));
     let row = n.layout_direction == LayoutDirection::Row;
     let content_w = (n.width - 2.0 * n.layout_padding).max(40.0);
     let share = if row && !el.children.is_empty() {
@@ -780,7 +828,11 @@ fn image_node(conv: &mut Conv, el: &Dom, style: &Style, avail_w: f32) -> Node {
         .or_else(|| el.attr("height").and_then(|v| v.parse().ok()))
         .unwrap_or(if featured { 400.0 } else { 300.0 });
     let mut n = Node::image(conv.next_id(), src, 0.0, 0.0, w, h);
-    n.name = if featured { "عکس شاخص".into() } else { "عکس".into() };
+    n.name = if featured {
+        "عکس شاخص".into()
+    } else {
+        "عکس".into()
+    };
     if featured {
         n.props.insert("wp_dynamic".into(), "featured".into());
     }
@@ -837,7 +889,8 @@ fn input_node(conv: &mut Conv, el: &Dom, style: &Style, avail_w: f32) -> Node {
     n.props.insert("type".into(), input_type);
     let placeholder = el.attr("placeholder").unwrap_or("");
     if !placeholder.is_empty() {
-        n.props.insert("placeholder".into(), placeholder.to_string());
+        n.props
+            .insert("placeholder".into(), placeholder.to_string());
         let mut t = Node::text_node(
             conv.next_id(),
             "راهنما",
@@ -863,7 +916,9 @@ fn button_node(conv: &mut Conv, el: &Dom, style: &Style, avail_w: f32) -> Node {
         .width
         .unwrap_or_else(|| (text_width_est(&text, font_size) + 2.0 * pad).max(100.0))
         .min(avail_w.max(100.0));
-    let h = style.height.unwrap_or_else(|| font_size * 1.45 + 2.0 * (pad * 0.6));
+    let h = style
+        .height
+        .unwrap_or_else(|| font_size * 1.45 + 2.0 * (pad * 0.6));
     let mut b = Node::new(conv.next_id(), "دکمه", NodeKind::Button, 0.0, 0.0, w, h);
     b.fill = style.background;
     if let Some(r) = style.radius {
@@ -1125,10 +1180,7 @@ fn count_dynamic(project: &Project) -> usize {
         page.root.walk(&mut |n| {
             let dynamic = n.props.contains_key("wp_loop")
                 || n.props.contains_key("wp_dynamic")
-                || n.text
-                    .as_deref()
-                    .map(|t| t.contains("{{"))
-                    .unwrap_or(false);
+                || n.text.as_deref().map(|t| t.contains("{{")).unwrap_or(false);
             if dynamic {
                 count += 1;
             }

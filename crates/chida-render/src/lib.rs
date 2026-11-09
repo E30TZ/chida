@@ -156,7 +156,11 @@ fn distance_to_segment(px: f32, py: f32, a: (f32, f32), b: (f32, f32)) -> f32 {
     ((px - qx).powi(2) + (py - qy).powi(2)).sqrt()
 }
 
-fn arrow_geometry(node: &Node, x: f32, y: f32) -> Option<((f32, f32), (f32, f32), Vec<(f32, f32)>)> {
+fn arrow_geometry(
+    node: &Node,
+    x: f32,
+    y: f32,
+) -> Option<((f32, f32), (f32, f32), Vec<(f32, f32)>)> {
     if node.path_points.len() < 2 {
         return None;
     }
@@ -793,7 +797,13 @@ fn svg_node(node: &Node, ox: f32, oy: f32, out: &mut String) {
         let stops = g
             .stops()
             .iter()
-            .map(|stop| format!("<stop offset=\"{}\" stop-color=\"{}\"/>", stop.offset, stop.color.to_hex()))
+            .map(|stop| {
+                format!(
+                    "<stop offset=\"{}\" stop-color=\"{}\"/>",
+                    stop.offset,
+                    stop.color.to_hex()
+                )
+            })
             .collect::<Vec<_>>()
             .join("");
         out.push_str(&format!(
@@ -879,7 +889,8 @@ fn svg_node(node: &Node, ox: f32, oy: f32, out: &mut String) {
             ));
         }
     }
-    if let Some(fill) = svg_fill.filter(|_| !matches!(node.kind, NodeKind::Path | NodeKind::Arrow)) {
+    if let Some(fill) = svg_fill.filter(|_| !matches!(node.kind, NodeKind::Path | NodeKind::Arrow))
+    {
         if node.kind == NodeKind::Ellipse {
             out.push_str(&format!(
                 "<ellipse cx=\"{}\" cy=\"{}\" rx=\"{}\" ry=\"{}\" fill=\"{}\"{} {} />",
@@ -1243,7 +1254,7 @@ mod tests {
             blur: 10.0,
             color: Color::BLACK,
             opacity: 0.5,
-        enabled: true,
+            enabled: true,
         }];
         pg.root.children.push(n);
         let c = render_page(&pg, 1.0);

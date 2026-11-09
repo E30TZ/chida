@@ -333,7 +333,11 @@ fn node_style(node: &Node) -> String {
     }
     if let Some(c) = node.stroke {
         if node.stroke_width > 0.0 {
-            style.push_str(&format!("border:{}px solid {};", node.stroke_width, c.to_hex()));
+            style.push_str(&format!(
+                "border:{}px solid {};",
+                node.stroke_width,
+                c.to_hex()
+            ));
         }
     }
     style.push_str(&shadow_css(node));
@@ -356,7 +360,10 @@ fn node_svg_inner(node: &Node) -> Option<String> {
     if !matches!(node.kind, NodeKind::Path | NodeKind::Arrow) {
         return None;
     }
-    let fill = node.fill.map(|c| c.to_hex()).unwrap_or_else(|| "none".into());
+    let fill = node
+        .fill
+        .map(|c| c.to_hex())
+        .unwrap_or_else(|| "none".into());
     let stroke = node
         .stroke
         .map(|c| c.to_hex())

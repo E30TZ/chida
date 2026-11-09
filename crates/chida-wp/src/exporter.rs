@@ -107,7 +107,10 @@ pub fn export_theme(project: &Project) -> BTreeMap<String, String> {
     for (slug_name, content) in extra_contents {
         files.insert(format!("page-{slug_name}.php"), wrap(&content));
     }
-    files.insert("functions.php".into(), functions_php(project, &slug, &domain));
+    files.insert(
+        "functions.php".into(),
+        functions_php(project, &slug, &domain),
+    );
     files.insert("style.css".into(), style_css(project, &domain, &css));
 
     files
@@ -147,7 +150,11 @@ fn render_node(node: &Node, indent: usize, css: &mut CssGen) -> String {
     }
     let pad = "  ".repeat(indent);
     let dynamic = node.props.get("wp_dynamic").map(|s| s.as_str());
-    let is_loop = node.props.get("wp_loop").map(|s| s == "posts").unwrap_or(false);
+    let is_loop = node
+        .props
+        .get("wp_loop")
+        .map(|s| s == "posts")
+        .unwrap_or(false);
 
     if is_loop {
         let inner = render_children(node, indent, css);
@@ -164,9 +171,9 @@ fn render_node(node: &Node, indent: usize, css: &mut CssGen) -> String {
     if dynamic == Some("featured") {
         let cls = css.class_for(node);
         return match cls {
-            Some(c) => format!(
-                "{pad}<?php the_post_thumbnail( 'large', array( 'class' => '{c}' ) ); ?>"
-            ),
+            Some(c) => {
+                format!("{pad}<?php the_post_thumbnail( 'large', array( 'class' => '{c}' ) ); ?>")
+            }
             None => format!("{pad}<?php the_post_thumbnail( 'large' ); ?>"),
         };
     }
@@ -194,12 +201,21 @@ fn render_node(node: &Node, indent: usize, css: &mut CssGen) -> String {
                     escape_attr(src)
                 )
             };
-            format!("{pad}<img{class} src=\"{src_attr}\" alt=\"{}\" />", escape_attr(alt))
+            format!(
+                "{pad}<img{class} src=\"{src_attr}\" alt=\"{}\" />",
+                escape_attr(alt)
+            )
         }
         NodeKind::Path | NodeKind::Arrow => {
             let class = class_attr(node, css);
-            let fill = node.fill.map(|c| c.to_hex()).unwrap_or_else(|| "none".into());
-            let stroke = node.stroke.map(|c| c.to_hex()).unwrap_or_else(|| fill.clone());
+            let fill = node
+                .fill
+                .map(|c| c.to_hex())
+                .unwrap_or_else(|| "none".into());
+            let stroke = node
+                .stroke
+                .map(|c| c.to_hex())
+                .unwrap_or_else(|| fill.clone());
             if node.kind == NodeKind::Arrow {
                 let head = node.arrow_head_points().unwrap_or_default();
                 if node.path_points.len() < 2 || head.len() < 3 {
@@ -236,8 +252,8 @@ fn render_node(node: &Node, indent: usize, css: &mut CssGen) -> String {
                 .map(|s| s.as_str())
                 .filter(|t| {
                     [
-                        "header", "footer", "nav", "section", "main", "article", "aside",
-                        "div", "ul", "ol", "li", "form", "figure",
+                        "header", "footer", "nav", "section", "main", "article", "aside", "div",
+                        "ul", "ol", "li", "form", "figure",
                     ]
                     .contains(t)
                 })
@@ -261,7 +277,11 @@ fn render_text_node(node: &Node, pad: &str, css: &mut CssGen) -> String {
     let content = markers_to_php(&text);
     let class = class_attr(node, css);
     let tag = node.props.get("tag").map(|s| s.as_str());
-    let permalink = node.props.get("wp_dynamic").map(|s| s == "permalink").unwrap_or(false);
+    let permalink = node
+        .props
+        .get("wp_dynamic")
+        .map(|s| s == "permalink")
+        .unwrap_or(false);
     let href = node.props.get("href").map(|s| s.as_str());
     let link_href: Option<String> = if permalink {
         Some("<?php the_permalink(); ?>".to_string())
@@ -269,7 +289,9 @@ fn render_text_node(node: &Node, pad: &str, css: &mut CssGen) -> String {
         href.map(escape_attr)
     };
     match (tag, link_href) {
-        (Some(t), Some(h)) if ["h1", "h2", "h3", "h4", "h5", "h6", "p", "span", "li"].contains(&t) => {
+        (Some(t), Some(h))
+            if ["h1", "h2", "h3", "h4", "h5", "h6", "p", "span", "li"].contains(&t) =>
+        {
             format!("{pad}<{t}{class}><a href=\"{h}\">{content}</a></{t}>")
         }
         (_, Some(h)) => format!("{pad}<a{class} href=\"{h}\">{content}</a>"),
@@ -326,11 +348,7 @@ fn render_input(node: &Node, pad: &str, css: &mut CssGen) -> String {
         .props
         .get("placeholder")
         .cloned()
-        .or_else(|| {
-            node.children
-                .first()
-                .and_then(|c| c.text.clone())
-        })
+        .or_else(|| node.children.first().and_then(|c| c.text.clone()))
         .unwrap_or_default();
     format!(
         "{pad}<input{class} type=\"{}\" placeholder=\"{}\" />",
@@ -445,10 +463,7 @@ impl CssGen {
 fn node_decls(node: &Node) -> Vec<(String, String)> {
     let mut d: Vec<(String, String)> = Vec::new();
     if let Some(g) = &node.fill_gradient {
-        d.push((
-            "background".into(),
-            g.css(),
-        ));
+        d.push(("background".into(), g.css()));
     } else if let Some(fill) = node.fill {
         if fill != chida_core::Color::TRANSPARENT {
             d.push(("background".into(), fill.to_hex()));
@@ -459,8 +474,10 @@ fn node_decls(node: &Node) -> Vec<(String, String)> {
         // CSS, so it belongs in the generated class either way.
         d.push(("color".into(), c.to_hex()));
     }
-    if matches!(node.kind, NodeKind::Text | NodeKind::Button | NodeKind::Input)
-        || node.text.is_some()
+    if matches!(
+        node.kind,
+        NodeKind::Text | NodeKind::Button | NodeKind::Input
+    ) || node.text.is_some()
     {
         if node.font_size > 0.0 && node.font_size != 16.0 {
             d.push(("font-size".into(), format!("{}px", fmt_num(node.font_size))));
@@ -558,7 +575,10 @@ fn node_decls(node: &Node) -> Vec<(String, String)> {
         d.push(("box-shadow".into(), shadows));
     }
     if node.blur_radius > 0.0 {
-        d.push(("filter".into(), format!("blur({}px)", fmt_num(node.blur_radius))));
+        d.push((
+            "filter".into(),
+            format!("blur({}px)", fmt_num(node.blur_radius)),
+        ));
     }
     if node.background_blur > 0.0 {
         d.push((
@@ -573,7 +593,10 @@ fn fmt_num(v: f32) -> String {
     if v == v.trunc() {
         format!("{}", v as i64)
     } else {
-        format!("{v:.2}").trim_end_matches('0').trim_end_matches('.').to_string()
+        format!("{v:.2}")
+            .trim_end_matches('0')
+            .trim_end_matches('.')
+            .to_string()
     }
 }
 
@@ -582,7 +605,12 @@ fn functions_php(project: &Project, slug: &str, domain: &str) -> String {
         .chars()
         .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
         .collect();
-    if ident.chars().next().map(|c| !c.is_ascii_alphabetic()).unwrap_or(true) {
+    if ident
+        .chars()
+        .next()
+        .map(|c| !c.is_ascii_alphabetic())
+        .unwrap_or(true)
+    {
         ident = format!("chida_{ident}");
     }
     format!(

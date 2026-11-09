@@ -37,8 +37,14 @@ fn import_builds_pages_and_dynamic_nodes() {
     let project = &imported.project;
 
     assert_eq!(project.name, "Fixture Blog");
-    assert_eq!(project.meta.get("wp_theme").map(|s| s.as_str()), Some("true"));
-    assert_eq!(project.meta.get("wp_slug").map(|s| s.as_str()), Some("fixture-blog"));
+    assert_eq!(
+        project.meta.get("wp_theme").map(|s| s.as_str()),
+        Some("true")
+    );
+    assert_eq!(
+        project.meta.get("wp_slug").map(|s| s.as_str()),
+        Some("fixture-blog")
+    );
     assert_eq!(
         project.meta.get("wp_text_domain").map(|s| s.as_str()),
         Some("fixture-blog")
@@ -65,10 +71,18 @@ fn import_builds_pages_and_dynamic_nodes() {
     });
     assert!(loop_found, "home page carries a loop container");
     // Dynamic post fields.
-    for marker in ["{{post_title}}", "{{post_content}}", "{{post_date}}", "{{post_author}}"] {
+    for marker in [
+        "{{post_title}}",
+        "{{post_content}}",
+        "{{post_date}}",
+        "{{post_author}}",
+    ] {
         assert!(
             has_node(project, &|n| {
-                n.text.as_deref().map(|t| t.contains(marker)).unwrap_or(false)
+                n.text
+                    .as_deref()
+                    .map(|t| t.contains(marker))
+                    .unwrap_or(false)
             }),
             "marker {marker} is present"
         );
@@ -85,8 +99,15 @@ fn import_builds_pages_and_dynamic_nodes() {
     let summary = &imported.summary;
     assert_eq!(summary.pages, 5);
     assert!(summary.elements > 20, "elements: {}", summary.elements);
-    assert!(summary.dynamic_blocks >= 6, "dynamic: {}", summary.dynamic_blocks);
-    assert!(summary.dropped_php >= 1, "the do_shortcode block is counted");
+    assert!(
+        summary.dynamic_blocks >= 6,
+        "dynamic: {}",
+        summary.dynamic_blocks
+    );
+    assert!(
+        summary.dropped_php >= 1,
+        "the do_shortcode block is counted"
+    );
 }
 
 #[test]

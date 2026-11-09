@@ -175,7 +175,11 @@ impl Style {
                 }
             }
             "border-radius" => {
-                self.radius = value.split_whitespace().next().and_then(parse_px).or(self.radius)
+                self.radius = value
+                    .split_whitespace()
+                    .next()
+                    .and_then(parse_px)
+                    .or(self.radius)
             }
             "padding" => self.padding = parse_box_vertical(value).or(self.padding),
             "margin" => self.margin_v = parse_box_vertical(value).or(self.margin_v),
@@ -189,14 +193,17 @@ impl Style {
                 self.flex_row = !value.to_lowercase().starts_with("column");
             }
             "gap" | "grid-gap" => {
-                self.gap = value.split_whitespace().next().and_then(parse_px).or(self.gap)
+                self.gap = value
+                    .split_whitespace()
+                    .next()
+                    .and_then(parse_px)
+                    .or(self.gap)
             }
             "width" => self.width = parse_px(value).or(self.width),
             "height" => self.height = parse_px(value).or(self.height),
             _ => {}
         }
     }
-
 }
 
 /// One parsed CSS rule.

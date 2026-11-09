@@ -34,10 +34,7 @@ pub fn read_zip(bytes: &[u8]) -> Result<ThemeFiles, String> {
         if entry.is_dir() {
             continue;
         }
-        let name = entry
-            .name()
-            .map_err(|e| e.to_string())?
-            .replace('\\', "/");
+        let name = entry.name().map_err(|e| e.to_string())?.replace('\\', "/");
         let mut data = Vec::new();
         entry.read_to_end(&mut data).map_err(|e| e.to_string())?;
         out.insert(name, data);
@@ -54,7 +51,9 @@ pub fn write_zip(files: &BTreeMap<String, String>) -> Result<Vec<u8>, String> {
         writer
             .start_file(name, options)
             .map_err(|e| e.to_string())?;
-        writer.write_all(text.as_bytes()).map_err(|e| e.to_string())?;
+        writer
+            .write_all(text.as_bytes())
+            .map_err(|e| e.to_string())?;
     }
     let cursor = writer.finish().map_err(|e| e.to_string())?;
     Ok(cursor.into_inner())

@@ -57,8 +57,8 @@ pub fn collapse_ws(s: &str) -> String {
 }
 
 const VOID_TAGS: &[&str] = &[
-    "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source",
-    "track", "wbr",
+    "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track",
+    "wbr",
 ];
 
 /// Parse markup into a synthetic root element (tag `#root`).
@@ -112,11 +112,7 @@ pub fn parse_html(input: &str) -> Dom {
         text_start = i;
         let tag_src = tag_src.trim();
         if let Some(name) = tag_src.strip_prefix('/') {
-            let name = name
-                .split_whitespace()
-                .next()
-                .unwrap_or("")
-                .to_lowercase();
+            let name = name.split_whitespace().next().unwrap_or("").to_lowercase();
             close_element(&mut stack, &mut root, &name);
             continue;
         }
@@ -129,7 +125,9 @@ pub fn parse_html(input: &str) -> Dom {
         }
         let attrs = parse_attrs(parts.next().unwrap_or(""));
         // `li` and `p` close implicitly when a sibling opens.
-        if (name == "li" || name == "p") && stack.last().map(|d| d.tag.as_str()) == Some(name.as_str()) {
+        if (name == "li" || name == "p")
+            && stack.last().map(|d| d.tag.as_str()) == Some(name.as_str())
+        {
             let done = stack.pop().unwrap();
             push_child(&mut stack, &mut root, DomChild::El(done));
         }
