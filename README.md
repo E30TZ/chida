@@ -32,7 +32,7 @@
 </p>
 
 <p align="center">
- <a href="./README-fa.md">
+ <a href="./README.fa.md">
  🇮🇷 فارسی
  </a>
 </p>
@@ -245,7 +245,7 @@ templates             the ready-made starting points
 
 **📖 This page in other languages:**
 
-🇮🇷 **[فارسی](./README-fa.md)**
+🇮🇷 **[فارسی](./README.fa.md)**
 
 **📂 More in this repo:**
 
