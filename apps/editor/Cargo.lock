@@ -144,7 +144,7 @@ checksum = "f079e83a288787bcd14a6aea84cee5c87a67c5a3e660c30f557a3d24761b3527"
 
 [[package]]
 name = "chida-core"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -152,7 +152,7 @@ dependencies = [
 
 [[package]]
 name = "chida-db"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -172,12 +172,13 @@ dependencies = [
  "serde",
  "serde_json",
  "wasm-bindgen",
+ "wasm-bindgen-futures",
  "web-sys",
 ]
 
 [[package]]
 name = "chida-logic"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "chida-db",
  "serde",
@@ -186,7 +187,7 @@ dependencies = [
 
 [[package]]
 name = "chida-wp"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "chida-core",
  "zip",

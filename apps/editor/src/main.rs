@@ -24,6 +24,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use wasm_bindgen::JsCast;
 
+mod gen_registry;
+
 const STORAGE_KEY: &str = "chida-editor-bundle-v3";
 const LANG_KEY: &str = "chida-editor-lang";
 
@@ -90,17 +92,17 @@ fn msg(lang: Lang, fa: &str, en: &str) -> String {
 }
 
 /// The bundled starter templates: key, Persian display name, English
-/// display name and the thumbnail render (the CLI's own render of the
-/// template home page).
-const TEMPLATES: [(&str, &str, &str, &str); 8] = [
-    ("shop", "فروشگاه ساده", "Simple shop", "assets/thumbs/shop.jpg"),
-    ("digikala", "فروشگاه بزرگ", "Large shop", "assets/thumbs/digikala.jpg"),
-    ("persian", "صفحه فارسی", "Persian page", "assets/thumbs/persian.jpg"),
-    ("liquid-glass", "شیشه‌ای", "Liquid glass", "assets/thumbs/liquid-glass.jpg"),
-    ("saas-dashboard", "داشبورد مدیریتی", "Admin dashboard", "assets/thumbs/saas-dashboard.jpg"),
-    ("clinic", "درمانگاه", "Clinic", "assets/thumbs/clinic.jpg"),
-    ("restaurant", "رستوران", "Restaurant", "assets/thumbs/restaurant.jpg"),
-    ("portfolio", "نمونه‌کار", "Portfolio", "assets/thumbs/portfolio.jpg"),
+/// display name, the thumbnail render (the CLI's own render of the
+/// template home page), and the gallery category id.
+const TEMPLATES: [(&str, &str, &str, &str, &str); 8] = [
+    ("shop", "فروشگاه ساده", "Simple shop", "assets/thumbs/shop.jpg", "shop"),
+    ("digikala", "فروشگاه بزرگ", "Large shop", "assets/thumbs/digikala.jpg", "shop"),
+    ("persian", "صفحه فارسی", "Persian page", "assets/thumbs/persian.jpg", "pages"),
+    ("liquid-glass", "شیشه‌ای", "Liquid glass", "assets/thumbs/liquid-glass.jpg", "saas"),
+    ("saas-dashboard", "داشبورد مدیریتی", "Admin dashboard", "assets/thumbs/saas-dashboard.jpg", "saas"),
+    ("clinic", "درمانگاه", "Clinic", "assets/thumbs/clinic.jpg", "health"),
+    ("restaurant", "رستوران", "Restaurant", "assets/thumbs/restaurant.jpg", "food"),
+    ("portfolio", "نمونه‌کار", "Portfolio", "assets/thumbs/portfolio.jpg", "portfolio"),
 ];
 
 fn template_json(key: &str) -> Option<&'static str> {
@@ -119,6 +121,24 @@ fn template_json(key: &str) -> Option<&'static str> {
 
 fn template_bundle(key: &str) -> Option<Bundle> {
     serde_json::from_str(template_json(key)?).ok()
+}
+
+/// Fetch a generated template's fixture on demand. Generated fixtures
+/// live in dist/fixtures/gen/ (trunk copies them from fixtures/) and
+/// are never embedded in the wasm, so 197 templates cost the bundle
+/// nothing until one is picked.
+async fn fetch_gen_bundle(key: &str) -> Result<Bundle, ()> {
+    use wasm_bindgen_futures::JsFuture;
+    let win = web_sys::window().ok_or(())?;
+    let url = format!("fixtures/gen/{key}.json");
+    let resp_value = JsFuture::from(win.fetch_with_str(&url)).await.map_err(|_| ())?;
+    let resp: web_sys::Response = resp_value.dyn_into().map_err(|_| ())?;
+    if !resp.ok() {
+        return Err(());
+    }
+    let text_value = JsFuture::from(resp.text().map_err(|_| ())?).await.map_err(|_| ())?;
+    let text = text_value.as_string().ok_or(())?;
+    serde_json::from_str(&text).map_err(|_| ())
 }
 
 /// A from-zero project: one page holding one empty desktop frame.
@@ -1748,6 +1768,12 @@ fn App() -> impl IntoView {
     let home_open = RwSignal::new(true);
     /// Why a picked project file was refused, shown on the start screen.
     let home_error = RwSignal::new(String::new());
+    /// Gallery filter on the start screen: category id, "" for all.
+    let tpl_cat = RwSignal::new(String::new());
+    /// Gallery search text on the start screen.
+    let tpl_q = RwSignal::new(String::new());
+    /// A generated template fixture is being fetched right now.
+    let tpl_loading = RwSignal::new(false);
     /// Hidden input behind «باز کردن فایل» on the start screen.
     let open_ref = NodeRef::<leptos::html::Input>::new();
     /// Hidden input behind «قالب وردپرس» on the start screen.
@@ -5590,21 +5616,119 @@ fn App() -> impl IntoView {
                             }}
                             <h2 class="home-tpl-title">{t("قالب آماده", "Ready templates")}</h2>
                             <p class="home-sub small">{t("از یک قالب شروع کنید و هر بخش را که خواستید تغییر دهید.", "Start from a template and change any part you like.")}</p>
-                            <div class="tpl-grid">
-                                {TEMPLATES.iter().map(|(key, fa, en, thumb)| {
-                                    let key_owned = key.to_string();
-                                    view! {
-                                        <button class="tpl-card" on:click=move |_| {
-                                            if let Some(b) = template_bundle(&key_owned) {
-                                                start_project(b);
-                                            }
-                                        }>
-                                            <img src=*thumb alt=move || tr(lang.get(), fa, en)/>
-                                            <span>{t(fa, en)}</span>
-                                        </button>
-                                    }
-                                }).collect_view()}
+                            <div class="tpl-tools">
+                                <input
+                                    class="tpl-search"
+                                    type="search"
+                                    placeholder=move || tr(lang.get(), "جستجوی قالب…", "Search templates…")
+                                    prop:value=move || tpl_q.get()
+                                    on:input=move |ev| tpl_q.set(event_target_value(&ev))
+                                />
+                                <div class="tpl-pills">
+                                    {move || {
+                                        let active = tpl_cat.get();
+                                        let all_label = tr(lang.get(), "همه", "All");
+                                        let mut pills = vec![view! {
+                                            <button
+                                                class=if active.is_empty() { "tpl-pill tpl-pill-active" } else { "tpl-pill" }
+                                                on:click=move |_| tpl_cat.set(String::new())
+                                            >{all_label}</button>
+                                        }.into_any()];
+                                        for (cid, cfa, cen) in gen_registry::GEN_CATEGORIES {
+                                            let cid_owned = cid.to_string();
+                                            let label = tr(lang.get(), cfa, cen);
+                                            let is_active = active == *cid;
+                                            pills.push(view! {
+                                                <button
+                                                    class=if is_active { "tpl-pill tpl-pill-active" } else { "tpl-pill" }
+                                                    on:click=move |_| tpl_cat.set(cid_owned.clone())
+                                                >{label}</button>
+                                            }.into_any());
+                                        }
+                                        pills.collect_view()
+                                    }}
+                                </div>
                             </div>
+                            {move || {
+                                let cat = tpl_cat.get();
+                                let q = tpl_q.get().trim().to_lowercase();
+                                let lg = lang.get();
+                                let matches = |fa: &str, en: &str, category: &str| {
+                                    (cat.is_empty() || category == cat)
+                                        && (q.is_empty()
+                                            || fa.contains(q.as_str())
+                                            || en.to_lowercase().contains(q.as_str()))
+                                };
+                                let mut cards: Vec<(String, &'static str, &'static str, Option<&'static str>, Option<&'static str>)> = Vec::new();
+                                for (key, fa, en, thumb, category) in TEMPLATES {
+                                    if matches(fa, en, category) {
+                                        cards.push((key.to_string(), fa, en, Some(thumb), None));
+                                    }
+                                }
+                                for g in gen_registry::GEN_TEMPLATES {
+                                    if matches(g.fa, g.en, g.category) {
+                                        cards.push((g.key.to_string(), g.fa, g.en, None, Some(g.color)));
+                                    }
+                                }
+                                let count = cards.len();
+                                let count_text = match lg {
+                                    Lang::Fa => format!("{count} قالب"),
+                                    Lang::En => format!("{count} templates"),
+                                };
+                                let loading = tpl_loading.get();
+                                view! {
+                                    <p class="tpl-count">{count_text}</p>
+                                    {if loading {
+                                        view! {
+                                            <p class="tpl-loading">{tr(lg, "در حال بارگذاری قالب…", "Loading the template…")}</p>
+                                        }.into_any()
+                                    } else {
+                                        view! { <span/> }.into_any()
+                                    }}
+                                    <div class="tpl-grid">
+                                        {cards.into_iter().map(|(key, fa, en, thumb, color)| {
+                                            let key_owned = key.clone();
+                                            let name = tr(lg, fa, en);
+                                            let is_gen = thumb.is_none();
+                                            view! {
+                                                <button class="tpl-card" on:click=move |_| {
+                                                    if !is_gen {
+                                                        if let Some(b) = template_bundle(&key_owned) {
+                                                            start_project(b);
+                                                        }
+                                                        return;
+                                                    }
+                                                    if tpl_loading.get_untracked() {
+                                                        return;
+                                                    }
+                                                    tpl_loading.set(true);
+                                                    let key = key_owned.clone();
+                                                    let start = start_project;
+                                                    wasm_bindgen_futures::spawn_local(async move {
+                                                        let result = fetch_gen_bundle(&key).await;
+                                                        tpl_loading.set(false);
+                                                        match result {
+                                                            Ok(b) => start(b),
+                                                            Err(()) => home_error.set(msg(lang.get(), "بارگذاری قالب ناموفق بود. لطفا دوباره تلاش کنید.", "The template could not be loaded. Please try again.")),
+                                                        }
+                                                    });
+                                                }>
+                                                    {match (thumb, color) {
+                                                        (Some(src), _) => view! {
+                                                            <img src=src alt=name/>
+                                                        }.into_any(),
+                                                        (_, Some(c)) => view! {
+                                                            <span class="tpl-tile" style=format!("background:{c}")>{name}</span>
+                                                        }.into_any(),
+                                                        _ => view! { <span/> }.into_any(),
+                                                    }}
+                                                    <span>{name}</span>
+                                                </button>
+                                            }
+                                        }).collect_view()}
+                                    </div>
+                                }
+                            }}
                         </div>
                     </div>
                 }
