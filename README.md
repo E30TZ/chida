@@ -10,7 +10,7 @@
 <h1 align="center">🧩 Chida</h1>
 
 <p align="center">
-    <strong>You draw a page. Chida turns it into a real app.</strong>
+    <strong>Build your own site from zero, without writing a single line of code.</strong>
 </p>
 
 ---
@@ -43,15 +43,13 @@
   </a>
 </p>
 
-<p align="center"><i>This is the editor itself. You draw here; Chida builds the rest.</i></p>
+<p align="center"><i>The editor, doing its job. You draw here; Chida builds the rest.</i></p>
 
 <p align="center">
     <a href="https://e30tz.github.io/chida/" target="_blank"><strong>▶ Try the editor live in your browser</strong></a> - no download, no install.
 </p>
 
 ## 📋 Table of Contents
-
-> **Quick Navigation** - Jump to any section below
 
 -   [📖 What is Chida?](#-what-is-chida)
 -   [👀 See it](#-see-it)
@@ -66,25 +64,21 @@
 
 # 📖 What is Chida?
 
-> **One story tells you everything**
+Suppose you want a small shop on the internet. With Chida you do three things:
 
-Say you want a small shop on the internet. With Chida you do three things:
+**1. You draw the shop page.** A large title. Pictures of the products. A price under each one. You drag boxes with the mouse, as in a drawing program.
 
-**1. You draw the shop page.** A big title. Pictures of the products. A price under each one. You drag boxes with the mouse, like in a drawing program.
+**2. You define what a product is.** A name, a price, a photo. Three entries you type once, in a simple table.
 
-**2. You say what a product is.** A name, a price, a photo. Three words you type once, in a simple table.
+**3. You press one button.** Chida returns the complete shop to you: the pages you drew, a program that keeps the products and takes orders, and **all of its code**. The code belongs to you. You can open it, modify it, and publish it yourself. Nothing remains locked inside Chida.
 
-**3. You press one button.** Chida hands you back the whole shop: the pages you drew, a program that keeps the products and takes orders, and **all of its code**. The code is yours. Open it, change it, put it on the internet yourself. Nothing stays locked inside Chida.
-
-That is Chida. A drawing program whose drawings become real apps. **Version 2** goes much deeper: real vector drawing, real components, real groups, smarter guides, stronger auto layout, richer color and effects, and clicks that do things. It is written in Rust, it is fast and light, and Persian and Arabic text comes out right-to-left and correct in every result.
+That is the entire idea. Version 2 adds what a real design tool requires: a vector pen, components, groups, smart guides, stronger auto layout, richer color and effects, and clicks that perform actions. Chida is written in Rust, so it is fast and light. Persian and Arabic text is rendered right-to-left and correctly in every result.
 
 ---
 
 # 👀 See it
 
-> **Do not take our word for it. Look.**
-
-Every picture here is real. Chida drew each one from a ready-made project with a single command. None of them is a painting made for this page. The command is written under each picture, so you can make the same picture yourself.
+These pictures are real. Chida drew each one from a ready-made project with a single command, and the command is written under each picture so you can produce the same one yourself.
 
 |  |  |
 | :---: | :---: |
@@ -102,26 +96,24 @@ Every picture here is real. Chida drew each one from a ready-made project with a
 
 # ✨ What you can do
 
-> **Four things, each in plain words**
-
 <div align="left">
 
 **🎨 Draw pages that look real**
 - Pages, layers, rulers and snap guides, like a real design tool
-- Drag, resize, pick many things at once, draw a box to select
-- Draw your own shapes with the **pen**: click for corners, drag for curves, then move, add or delete points whenever you like
-- Ready shapes too: **polygon, star and arrow**, all drawn as real vector paths
-- Make a **component** once and drop copies anywhere. Change the master and every copy follows. Change one copy's words or color and only that copy changes. Detach a copy when you want it on its own
-- **Group** things and move or resize them as one; drag layers to reorder them and double-click a layer to rename it
-- Pull guides out of the ruler and snap to them; smart guides snap things into line and show the gap between them
-- Boxes line themselves up in rows and columns (auto layout): a box can **hug** what is inside it or **fill** its parent, padding can differ per side, and rows can wrap
-- Colors can fade through as many **gradient stops** as you like; **shadows can stack**; a thing, or what sits behind it, can blur
-- Say what a **click** does: go to another page or open a link. Hover works in the preview too
-- A whole shelf of ready **sections** to drop in: navbars, heroes, features, prices, customer words, galleries, forms, footers and calls to action
+- Drag, resize, select many items at once, and draw a box to select
+- Draw your own shapes with the **pen**: click for corners, drag for curves, then move, add or delete points whenever you wish
+- Ready shapes are available as well: **polygon, star and arrow**, all drawn as real vector paths
+- Create a **component** once and place copies anywhere. Change the master and every copy follows. Change one copy's text or color and only that copy changes. Detach a copy when you want it on its own
+- **Group** items and move or resize them as one; drag layers to reorder them and double-click a layer to rename it
+- Pull guides out of the ruler and snap to them; smart guides snap items into line and show the gap between them
+- Boxes arrange themselves in rows and columns: a box can **hug** its contents or **fill** its parent, padding can differ per side, and rows can wrap
+- Colors can pass through as many **gradient stops** as you wish; **shadows can stack**; an item, or what lies behind it, can blur
+- Define what a **click** does: go to another page or open a link. Hover works in the preview as well
+- A complete shelf of ready **sections** to drop in: navbars, heroes, features, prices, customer words, galleries, forms, footers and calls to action
 - Save a look once and reuse it everywhere (named styles)
 - Bring your own pictures in
 - Press preview and click around: the page links really work
-- Start in **Simple** mode with big buttons. Open **Builder**, then **Pro**, only when you want more. The last level shows even the code
+- Start in **Simple** mode with large buttons. Open **Builder**, then **Pro**, only when you want more. The final level shows even the code
 
 **📄 Turn a drawing into a working app**
 - One press gives you a **PNG picture** or an **SVG file** of any page
@@ -151,7 +143,7 @@ Every project starts from a ready-made one, so you never face an empty page: **s
 
 # 🚀 Try it now
 
-> **Three steps. No account. No payment.**
+Three steps. No account. No payment.
 
 ### Step 1: take the file for your computer
 
@@ -188,9 +180,9 @@ The first line makes a small shop project. The second line draws its pages as pi
 
 <div align="left">
 
-**🖼️ Open the folder** `myshop-pictures`. The pictures inside are your shop, drawn by Chida. That is the whole idea, working in your hands.
+**🖼️ Open the folder** `myshop-pictures`. The pictures inside are your shop, drawn by Chida. That is the entire idea, working in your hands.
 
-**✏️ You would rather click than type?** Unzip `chida-editor-2.0.0.zip` and open the editor in your browser. If the page stays white, serve the folder with any small local web server: browsers do not load the editor straight from a file.
+**✏️ If you prefer clicking to typing:** unzip `chida-editor-2.0.0.zip` and open the editor in your browser. If the page stays white, serve the folder with any small local web server: browsers do not load the editor straight from a file.
 
 **🗂️ One file is the whole project:** `myshop/myshop.chida.json` holds the pages, the tables and the rules. Move it, copy it, send it to a friend.
 
@@ -209,8 +201,6 @@ The first line makes a small shop project. The second line draws its pages as pi
 ---
 
 # 🔌 WordPress themes
-
-> **Your old theme is not a dead end**
 
 Chida reads WordPress themes and writes them back.
 

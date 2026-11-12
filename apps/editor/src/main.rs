@@ -25,18 +25,82 @@ use std::collections::BTreeSet;
 use wasm_bindgen::JsCast;
 
 const STORAGE_KEY: &str = "chida-editor-bundle-v3";
+const LANG_KEY: &str = "chida-editor-lang";
 
-/// The bundled starter templates: key, Persian display name and the
-/// thumbnail render (the CLI's own render of the template home page).
-const TEMPLATES: [(&str, &str, &str); 8] = [
-    ("shop", "فروشگاه ساده", "assets/thumbs/shop.jpg"),
-    ("digikala", "فروشگاه بزرگ", "assets/thumbs/digikala.jpg"),
-    ("persian", "صفحه فارسی", "assets/thumbs/persian.jpg"),
-    ("liquid-glass", "شیشه‌ای", "assets/thumbs/liquid-glass.jpg"),
-    ("saas-dashboard", "داشبورد مدیریتی", "assets/thumbs/saas-dashboard.jpg"),
-    ("clinic", "درمانگاه", "assets/thumbs/clinic.jpg"),
-    ("restaurant", "رستوران", "assets/thumbs/restaurant.jpg"),
-    ("portfolio", "نمونه‌کار", "assets/thumbs/portfolio.jpg"),
+/// UI language: Persian (default, RTL) or English (LTR). The choice
+/// persists in localStorage and the whole shell flips direction with it.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Lang {
+    Fa,
+    En,
+}
+
+/// What the status bar's save line says. Kept as data, not a
+/// rendered string, so a language switch re-renders it in the new
+/// language instead of leaving a stale-language stamp.
+#[derive(Clone)]
+enum SaveStamp {
+    AutosaveOn,
+    SavedAt(String),
+    FreshProject,
+}
+
+fn load_lang() -> Lang {
+    if let Some(w) = web_sys::window() {
+        if let Ok(Some(storage)) = w.local_storage() {
+            if let Ok(Some(v)) = storage.get_item(LANG_KEY) {
+                if v == "en" {
+                    return Lang::En;
+                }
+            }
+        }
+    }
+    Lang::Fa
+}
+
+fn save_lang(lang: Lang) {
+    if let Some(w) = web_sys::window() {
+        if let Ok(Some(storage)) = w.local_storage() {
+            let _ = storage.set_item(
+                LANG_KEY,
+                match lang {
+                    Lang::Fa => "fa",
+                    Lang::En => "en",
+                },
+            );
+        }
+    }
+}
+
+/// Pick the string for the current language. Persian is the formal
+/// written register (کتابی), English is formal with complete sentences.
+fn tr(lang: Lang, fa: &'static str, en: &'static str) -> &'static str {
+    match lang {
+        Lang::Fa => fa,
+        Lang::En => en,
+    }
+}
+
+/// Owned-string form of `tr`, for status notes and error messages.
+fn msg(lang: Lang, fa: &str, en: &str) -> String {
+    match lang {
+        Lang::Fa => fa.to_string(),
+        Lang::En => en.to_string(),
+    }
+}
+
+/// The bundled starter templates: key, Persian display name, English
+/// display name and the thumbnail render (the CLI's own render of the
+/// template home page).
+const TEMPLATES: [(&str, &str, &str, &str); 8] = [
+    ("shop", "فروشگاه ساده", "Simple shop", "assets/thumbs/shop.jpg"),
+    ("digikala", "فروشگاه بزرگ", "Large shop", "assets/thumbs/digikala.jpg"),
+    ("persian", "صفحه فارسی", "Persian page", "assets/thumbs/persian.jpg"),
+    ("liquid-glass", "شیشه‌ای", "Liquid glass", "assets/thumbs/liquid-glass.jpg"),
+    ("saas-dashboard", "داشبورد مدیریتی", "Admin dashboard", "assets/thumbs/saas-dashboard.jpg"),
+    ("clinic", "درمانگاه", "Clinic", "assets/thumbs/clinic.jpg"),
+    ("restaurant", "رستوران", "Restaurant", "assets/thumbs/restaurant.jpg"),
+    ("portfolio", "نمونه‌کار", "Portfolio", "assets/thumbs/portfolio.jpg"),
 ];
 
 fn template_json(key: &str) -> Option<&'static str> {
@@ -212,49 +276,103 @@ fn hex_rgba(hex: &str, opacity: f32) -> String {
     format!("rgba({},{},{},{:.3})", c.r, c.g, c.b, a)
 }
 
-fn kind_fa(kind: NodeKind) -> &'static str {
-    match kind {
-        NodeKind::Frame => "فریم",
-        NodeKind::Rectangle => "مستطیل",
-        NodeKind::Ellipse => "دایره",
-        NodeKind::Text => "متن",
-        NodeKind::Button => "دکمه",
-        NodeKind::Card => "کارت",
-        NodeKind::Image => "تصویر",
-        NodeKind::Input => "ورودی",
-        NodeKind::Divider => "خط جدا کننده",
-        NodeKind::Icon => "آیکون",
-        NodeKind::List => "فهرست",
-        NodeKind::Table => "جدول",
-        NodeKind::Chart => "نمودار",
-        NodeKind::Custom => "بلوک",
-        NodeKind::Path => "مسیر",
-        NodeKind::Arrow => "فلش",
-        NodeKind::Component => "نمونه کامپوننت",
-        NodeKind::Group => "گروه",
+fn kind_label(kind: NodeKind, lang: Lang) -> &'static str {
+    match (kind, lang) {
+        (NodeKind::Frame, Lang::Fa) => "فریم",
+        (NodeKind::Frame, Lang::En) => "Frame",
+        (NodeKind::Rectangle, Lang::Fa) => "مستطیل",
+        (NodeKind::Rectangle, Lang::En) => "Rectangle",
+        (NodeKind::Ellipse, Lang::Fa) => "دایره",
+        (NodeKind::Ellipse, Lang::En) => "Ellipse",
+        (NodeKind::Text, Lang::Fa) => "متن",
+        (NodeKind::Text, Lang::En) => "Text",
+        (NodeKind::Button, Lang::Fa) => "دکمه",
+        (NodeKind::Button, Lang::En) => "Button",
+        (NodeKind::Card, Lang::Fa) => "کارت",
+        (NodeKind::Card, Lang::En) => "Card",
+        (NodeKind::Image, Lang::Fa) => "تصویر",
+        (NodeKind::Image, Lang::En) => "Image",
+        (NodeKind::Input, Lang::Fa) => "ورودی",
+        (NodeKind::Input, Lang::En) => "Input",
+        (NodeKind::Divider, Lang::Fa) => "خط جدا کننده",
+        (NodeKind::Divider, Lang::En) => "Divider",
+        (NodeKind::Icon, Lang::Fa) => "آیکون",
+        (NodeKind::Icon, Lang::En) => "Icon",
+        (NodeKind::List, Lang::Fa) => "فهرست",
+        (NodeKind::List, Lang::En) => "List",
+        (NodeKind::Table, Lang::Fa) => "جدول",
+        (NodeKind::Table, Lang::En) => "Table",
+        (NodeKind::Chart, Lang::Fa) => "نمودار",
+        (NodeKind::Chart, Lang::En) => "Chart",
+        (NodeKind::Custom, Lang::Fa) => "بلوک",
+        (NodeKind::Custom, Lang::En) => "Block",
+        (NodeKind::Path, Lang::Fa) => "مسیر",
+        (NodeKind::Path, Lang::En) => "Path",
+        (NodeKind::Arrow, Lang::Fa) => "فلش",
+        (NodeKind::Arrow, Lang::En) => "Arrow",
+        (NodeKind::Component, Lang::Fa) => "نمونه کامپوننت",
+        (NodeKind::Component, Lang::En) => "Component instance",
+        (NodeKind::Group, Lang::Fa) => "گروه",
+        (NodeKind::Group, Lang::En) => "Group",
     }
 }
 
+/// Eye and lock marks for layer rows (same stroke language).
+const EYE_SVG: &str = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><path d=\"M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/></svg>";
+const EYE_OFF_SVG: &str = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><path d=\"M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M4 4l16 16\"/></svg>";
+const LOCK_SVG: &str = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><rect x=\"5\" y=\"11\" width=\"14\" height=\"9\" rx=\"2\"/><path d=\"M8 11V8a4 4 0 018 0v3\"/></svg>";
+const UNLOCK_SVG: &str = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><rect x=\"5\" y=\"11\" width=\"14\" height=\"9\" rx=\"2\"/><path d=\"M8 11V8a4 4 0 017.8-1.2\"/></svg>";
+/// Top-bar and start-screen marks. These MUST be referenced through
+/// the constants: `inner_html="literal"` in a view is a static HTML
+/// attribute and renders nothing, while an expression sets innerHTML.
+const HOME_SVG: &str = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><path d=\"M3 11l9-8 9 8M5 9v11h14V9\"/></svg>";
+const PLAY_SVG: &str = "<svg viewBox=\"0 0 24 24\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M7 4l13 8-13 8z\"/></svg>";
+const CHEVRON_SVG: &str = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><path d=\"M6 9l6 6 6-6\"/></svg>";
+const LINK_SVG: &str = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><path d=\"M10 14a5 5 0 007.1 0l2-2a5 5 0 00-7.1-7.1l-1 1\"/><path d=\"M14 10a5 5 0 00-7.1 0l-2 2a5 5 0 007.1 7.1l1-1\"/></svg>";
+const CARD_BLANK_SVG: &str = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"2\"/><path d=\"M12 8v8M8 12h8\"/></svg>";
+const CARD_OPEN_SVG: &str = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><path d=\"M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2z\"/></svg>";
+const CARD_WP_SVG: &str = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><path d=\"M12 3l8 4.5v9L12 21l-8-4.5v-9z\"/><path d=\"M12 12l8-4.5M12 12v9M12 12L4 7.5\"/></svg>";
+
+/// One SVG icon per section category in the components panel.
+fn section_icon(key: &str) -> &'static str {
+    match key {
+        "basics" => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><rect x=\"4\" y=\"4\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"13\" y=\"4\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"4\" y=\"13\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"13\" y=\"13\" width=\"7\" height=\"7\" rx=\"1\"/></svg>",
+        "navbars" => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><rect x=\"3\" y=\"5\" width=\"18\" height=\"14\" rx=\"2\"/><path d=\"M3 9h18\"/><rect x=\"6\" y=\"6.4\" width=\"2.5\" height=\"1.4\" fill=\"currentColor\" stroke=\"none\"/><path d=\"M15 7h3\"/></svg>",
+        "heroes" => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><rect x=\"3\" y=\"4\" width=\"18\" height=\"16\" rx=\"2\"/><circle cx=\"9\" cy=\"10\" r=\"2\"/><path d=\"M4 18l5-5 4 4 3-3 4 4\"/></svg>",
+        "features" => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><path d=\"M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z\"/></svg>",
+        "pricing" => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><rect x=\"3\" y=\"6\" width=\"18\" height=\"13\" rx=\"2\"/><path d=\"M3 10h18M7 15h4\"/></svg>",
+        "testimonials" => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><path d=\"M4 5h16v11H9l-5 4V5z\"/><path d=\"M8 9h8M8 13h5\"/></svg>",
+        "gallery" => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><rect x=\"3\" y=\"3\" width=\"12\" height=\"12\" rx=\"2\"/><rect x=\"9\" y=\"9\" width=\"12\" height=\"12\" rx=\"2\"/><circle cx=\"14\" cy=\"13\" r=\"1.6\"/></svg>",
+        "forms" => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><rect x=\"3\" y=\"8\" width=\"18\" height=\"9\" rx=\"2\"/><path d=\"M7 12.5h6\"/></svg>",
+        "footers" => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><rect x=\"3\" y=\"5\" width=\"18\" height=\"14\" rx=\"2\"/><path d=\"M3 15h18\"/></svg>",
+        _ => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><path d=\"M6 21V4M6 4h12l-2 4 2 4H6\"/></svg>",
+    }
+}
+
+/// One consistent inline-SVG icon set for layer rows (and, via
+/// `tool_icon`, the tool rail): 24x24, stroke currentColor, drawn from
+/// the same geometric language as the logo's selection-handle square.
+/// No emoji icons anywhere in the chrome.
 fn kind_icon(kind: NodeKind) -> &'static str {
     match kind {
-        NodeKind::Frame => "▢",
-        NodeKind::Rectangle => "▭",
-        NodeKind::Ellipse => "●",
-        NodeKind::Text => "T",
-        NodeKind::Button => "▣",
-        NodeKind::Card => "▤",
-        NodeKind::Image => "🖼",
-        NodeKind::Input => "⌨",
-        NodeKind::Divider => "―",
-        NodeKind::Icon => "✦",
-        NodeKind::List => "☰",
-        NodeKind::Table => "▦",
-        NodeKind::Chart => "📊",
-        NodeKind::Custom => "◆",
-        NodeKind::Path => "✒",
-        NodeKind::Arrow => "➜",
-        NodeKind::Component => "🧩",
-        NodeKind::Group => "▦",
+        NodeKind::Frame => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"1\"/><rect x=\"4\" y=\"4\" width=\"5\" height=\"5\" fill=\"currentColor\" stroke=\"none\"/></svg>",
+        NodeKind::Rectangle => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><rect x=\"4\" y=\"6\" width=\"16\" height=\"12\" rx=\"1\"/></svg>",
+        NodeKind::Ellipse => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><ellipse cx=\"12\" cy=\"12\" rx=\"9\" ry=\"7\"/></svg>",
+        NodeKind::Text => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><path d=\"M5 5h14M12 5v14\"/></svg>",
+        NodeKind::Button => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><rect x=\"3\" y=\"8\" width=\"18\" height=\"9\" rx=\"4\"/><path d=\"M8 12.5h8\"/></svg>",
+        NodeKind::Card => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><rect x=\"4\" y=\"5\" width=\"16\" height=\"14\" rx=\"2\"/><path d=\"M4 10h16\"/></svg>",
+        NodeKind::Image => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><rect x=\"3\" y=\"4\" width=\"18\" height=\"16\" rx=\"2\"/><circle cx=\"9\" cy=\"10\" r=\"2\"/><path d=\"M4 18l5-5 4 4 3-3 4 4\"/></svg>",
+        NodeKind::Input => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><rect x=\"3\" y=\"8\" width=\"18\" height=\"9\" rx=\"2\"/><path d=\"M7 12.5h6\"/></svg>",
+        NodeKind::Divider => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><path d=\"M4 12h16\"/><circle cx=\"4\" cy=\"12\" r=\"1.4\" fill=\"currentColor\" stroke=\"none\"/><circle cx=\"20\" cy=\"12\" r=\"1.4\" fill=\"currentColor\" stroke=\"none\"/></svg>",
+        NodeKind::Icon => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><path d=\"M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z\"/></svg>",
+        NodeKind::List => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><path d=\"M9 6h11M9 12h11M9 18h11\"/><circle cx=\"4.5\" cy=\"6\" r=\"1.3\" fill=\"currentColor\" stroke=\"none\"/><circle cx=\"4.5\" cy=\"12\" r=\"1.3\" fill=\"currentColor\" stroke=\"none\"/><circle cx=\"4.5\" cy=\"18\" r=\"1.3\" fill=\"currentColor\" stroke=\"none\"/></svg>",
+        NodeKind::Table => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><rect x=\"4\" y=\"5\" width=\"16\" height=\"14\" rx=\"1\"/><path d=\"M4 10h16M12 10v9\"/></svg>",
+        NodeKind::Chart => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><path d=\"M4 20V4M4 20h16\"/><path d=\"M8 16v-5M12 16V8M16 16v-3\"/></svg>",
+        NodeKind::Custom => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><path d=\"M12 3l7 7-7 7-7-7z\"/></svg>",
+        NodeKind::Path => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><path d=\"M4 20l1-4L16 5l3 3L8 19l-4 1z\"/><path d=\"M14 7l3 3\"/></svg>",
+        NodeKind::Arrow => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><path d=\"M4 12h15M13 6l6 6-6 6\"/></svg>",
+        NodeKind::Component => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><rect x=\"3\" y=\"3\" width=\"11\" height=\"11\" rx=\"1\"/><rect x=\"10\" y=\"10\" width=\"11\" height=\"11\" rx=\"1\"/></svg>",
+        NodeKind::Group => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><rect x=\"4\" y=\"4\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"13\" y=\"4\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"4\" y=\"13\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"13\" y=\"13\" width=\"7\" height=\"7\" rx=\"1\"/></svg>",
     }
 }
 
@@ -376,43 +494,57 @@ fn is_rtl_text(s: &str) -> bool {
     s.chars().any(|c| ('\u{0590}'..='\u{08FF}').contains(&c))
 }
 
-fn event_fa(kind: &EventKind) -> &'static str {
-    match kind {
-        EventKind::Click => "کلیک",
-        EventKind::PageLoad => "بارگذاری صفحه",
-        EventKind::Submit => "ثبت فرم",
-        EventKind::Change => "تغییر مقدار",
-        EventKind::Timer => "زمانبندی",
-        EventKind::Webhook => "وب هوک",
+fn event_label(kind: &EventKind, lang: Lang) -> &'static str {
+    match (kind, lang) {
+        (EventKind::Click, Lang::Fa) => "کلیک",
+        (EventKind::Click, Lang::En) => "Click",
+        (EventKind::PageLoad, Lang::Fa) => "بارگذاری صفحه",
+        (EventKind::PageLoad, Lang::En) => "Page load",
+        (EventKind::Submit, Lang::Fa) => "ثبت فرم",
+        (EventKind::Submit, Lang::En) => "Form submit",
+        (EventKind::Change, Lang::Fa) => "تغییر مقدار",
+        (EventKind::Change, Lang::En) => "Value change",
+        (EventKind::Timer, Lang::Fa) => "زمانبندی",
+        (EventKind::Timer, Lang::En) => "Timer",
+        (EventKind::Webhook, Lang::Fa) => "وب هوک",
+        (EventKind::Webhook, Lang::En) => "Webhook",
     }
 }
 
-fn action_fa(action: &Action) -> String {
-    match action {
-        Action::Navigate { route } => format!("برو به صفحه {route}"),
-        Action::ShowMessage { text } => format!("پیام نشان بده: {text}"),
-        Action::SetValue { key, .. } => format!("مقدار {key} را تنظیم کن"),
-        Action::Increment { key, by } => format!("{key} را {by} واحد زیاد کن"),
-        Action::SaveRecord { table, .. } => format!("یک رکورد در جدول {table} ذخیره کن"),
-        Action::DeleteRecord { table, .. } => format!("رکوردی از جدول {table} حذف کن"),
-        Action::CallApi { url, method } => format!("صدا زدن API با {method} به {url}"),
-        Action::Log { text } => format!("لاگ بنویس: {text}"),
+fn action_text(action: &Action, lang: Lang) -> String {
+    match (action, lang) {
+        (Action::Navigate { route }, Lang::Fa) => format!("رفتن به صفحه {route}"),
+        (Action::Navigate { route }, Lang::En) => format!("Go to page {route}"),
+        (Action::ShowMessage { text }, Lang::Fa) => format!("نمایش پیام: {text}"),
+        (Action::ShowMessage { text }, Lang::En) => format!("Show message: {text}"),
+        (Action::SetValue { key, .. }, Lang::Fa) => format!("تنظیم مقدار {key}"),
+        (Action::SetValue { key, .. }, Lang::En) => format!("Set the value of {key}"),
+        (Action::Increment { key, by }, Lang::Fa) => format!("افزایش {key} به مقدار {by} واحد"),
+        (Action::Increment { key, by }, Lang::En) => format!("Increase {key} by {by}"),
+        (Action::SaveRecord { table, .. }, Lang::Fa) => format!("ذخیره یک رکورد در جدول {table}"),
+        (Action::SaveRecord { table, .. }, Lang::En) => format!("Save a record in the {table} table"),
+        (Action::DeleteRecord { table, .. }, Lang::Fa) => format!("حذف یک رکورد از جدول {table}"),
+        (Action::DeleteRecord { table, .. }, Lang::En) => format!("Delete a record from the {table} table"),
+        (Action::CallApi { url, method }, Lang::Fa) => format!("فراخوانی API با {method} به {url}"),
+        (Action::CallApi { url, method }, Lang::En) => format!("Call the API with {method} to {url}"),
+        (Action::Log { text }, Lang::Fa) => format!("ثبت لاگ: {text}"),
+        (Action::Log { text }, Lang::En) => format!("Write a log: {text}"),
     }
 }
 
-fn step_lines(step: &Step, indent: usize, out: &mut Vec<String>) {
+fn step_lines(step: &Step, indent: usize, lang: Lang, out: &mut Vec<String>) {
     let pad = "  ".repeat(indent);
     match step {
-        Step::Action { action } => out.push(format!("{pad}{}", action_fa(action))),
+        Step::Action { action } => out.push(format!("{pad}{}", action_text(action, lang))),
         Step::Condition { then_steps, else_steps, .. } => {
-            out.push(format!("{pad}اگر شرط برقرار بود:"));
+            out.push(format!("{pad}{}", tr(lang, "اگر شرط برقرار بود:", "If the condition holds:")));
             for s in then_steps {
-                step_lines(s, indent + 1, out);
+                step_lines(s, indent + 1, lang, out);
             }
             if !else_steps.is_empty() {
-                out.push(format!("{pad}در غیر این صورت:"));
+                out.push(format!("{pad}{}", tr(lang, "در غیر این صورت:", "Otherwise:")));
                 for s in else_steps {
-                    step_lines(s, indent + 1, out);
+                    step_lines(s, indent + 1, lang, out);
                 }
             }
         }
@@ -1484,6 +1616,40 @@ impl Tool {
             Tool::Pen => 3,
         }
     }
+
+    /// Which rail group the tool belongs to, for the separator lines:
+    /// 0 select and pan, 1 draw, 2 shapes, 3 blocks, 4 vector.
+    fn rail_group(self) -> u8 {
+        match self {
+            Tool::Move | Tool::Hand => 0,
+            Tool::Text | Tool::Image => 1,
+            Tool::Frame | Tool::Rect | Tool::Ellipse | Tool::Line => 2,
+            Tool::Button | Tool::Card | Tool::Input => 3,
+            Tool::Pen | Tool::Polygon | Tool::Star | Tool::Arrow => 4,
+        }
+    }
+}
+
+/// Inline-SVG icon for a rail tool, from the same geometric set as
+/// `kind_icon`. The Move cursor is filled; the rest are stroked.
+fn tool_icon(tool: Tool) -> &'static str {
+    match tool {
+        Tool::Move => "<svg viewBox=\"0 0 24 24\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M6 3v18l4.5-4 2 6 2.4-1-2-5.6L19 16V3z\"/></svg>",
+        Tool::Hand => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><path d=\"M12 3v3M12 18v3M3 12h3M18 12h3\"/><path d=\"M12 3L9.8 5.8M12 3l2.2 2.8M12 21l-2.2-2.8M12 21l2.2-2.8M3 12l2.8-2.2M3 12l2.8 2.2M21 12l-2.8-2.2M21 12l-2.8 2.2\"/></svg>",
+        Tool::Text => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><path d=\"M5 5h14M12 5v14\"/></svg>",
+        Tool::Image => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><rect x=\"3\" y=\"4\" width=\"18\" height=\"16\" rx=\"2\"/><circle cx=\"9\" cy=\"10\" r=\"2\"/><path d=\"M4 18l5-5 4 4 3-3 4 4\"/></svg>",
+        Tool::Frame => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"1\"/><rect x=\"4\" y=\"4\" width=\"5\" height=\"5\" fill=\"currentColor\" stroke=\"none\"/></svg>",
+        Tool::Rect => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><rect x=\"4\" y=\"6\" width=\"16\" height=\"12\" rx=\"1\"/></svg>",
+        Tool::Ellipse => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><ellipse cx=\"12\" cy=\"12\" rx=\"9\" ry=\"7\"/></svg>",
+        Tool::Line => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><path d=\"M5 19L19 5\"/><circle cx=\"5\" cy=\"19\" r=\"1.6\" fill=\"currentColor\" stroke=\"none\"/><circle cx=\"19\" cy=\"5\" r=\"1.6\" fill=\"currentColor\" stroke=\"none\"/></svg>",
+        Tool::Button => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><rect x=\"3\" y=\"8\" width=\"18\" height=\"9\" rx=\"4\"/><path d=\"M8 12.5h8\"/></svg>",
+        Tool::Card => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><rect x=\"4\" y=\"5\" width=\"16\" height=\"14\" rx=\"2\"/><path d=\"M4 10h16\"/></svg>",
+        Tool::Input => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><rect x=\"3\" y=\"8\" width=\"18\" height=\"9\" rx=\"2\"/><path d=\"M7 12.5h6\"/></svg>",
+        Tool::Pen => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><path d=\"M4 20l1-4L16 5l3 3L8 19l-4 1z\"/><path d=\"M14 7l3 3\"/></svg>",
+        Tool::Polygon => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><path d=\"M12 3l8.2 6-3.1 9.4H6.9L3.8 9z\"/></svg>",
+        Tool::Star => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><path d=\"M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8z\"/></svg>",
+        Tool::Arrow => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><path d=\"M4 12h15M13 6l6 6-6 6\"/></svg>",
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -1554,6 +1720,13 @@ fn App() -> impl IntoView {
     });
     let page_index = RwSignal::new(0usize);
     let selected_id = RwSignal::new(String::new());
+    // UI language (Persian default, RTL; English, LTR), persisted.
+    let lang = RwSignal::new(load_lang());
+    // Reactive text helper: `t("فارسی", "English")` renders the string
+    // for the current language and re-renders when it changes.
+    let t = move |fa: &'static str, en: &'static str| move || tr(lang.get(), fa, en);
+    // The top bar overflow menu («بیشتر») is open.
+    let menu_open = RwSignal::new(false);
     let level = RwSignal::new(2u8);
     let tab = RwSignal::new(0u8); // 0 design, 1 logic, 2 data, 3 code
     let tool = RwSignal::new(Tool::Move);
@@ -1613,14 +1786,15 @@ fn App() -> impl IntoView {
     let pan = RwSignal::new((0.0f32, 0.0f32));
     let past = RwSignal::new(Vec::<Project>::new());
     let future = RwSignal::new(Vec::<Project>::new());
-    let saved_stamp = RwSignal::new(String::from("ذخیره خودکار روی این مرورگر فعال است"));
+    let saved_stamp = RwSignal::new(SaveStamp::AutosaveOn);
     let last_edit = RwSignal::new((String::new(), 0.0f64));
     let render_note = RwSignal::new(String::new());
 
     let artboard_ref = NodeRef::<leptos::html::Div>::new();
 
-    // Fit scale from the window width: chrome is rail 48 + panel 240 +
-    // right panel 300, plus workspace padding.
+    // Fit scale from the window width: chrome is rail 60 + panel 256 +
+    // right panel 312, plus workspace padding, inside the 700px
+    // allowance below.
     let win_width = RwSignal::new(1440.0f32);
     let win_height = RwSignal::new(900.0f32);
     let measure = move || {
@@ -1666,7 +1840,7 @@ fn App() -> impl IntoView {
                 }
             }
         });
-        saved_stamp.set(format!("ذخیره شد، ساعت {}", now_time()));
+        saved_stamp.set(SaveStamp::SavedAt(now_time()));
     };
 
     // Record the current project in history (grouped for rapid
@@ -1776,10 +1950,11 @@ fn App() -> impl IntoView {
                 if let Some(text) = result.as_string() {
                     match parse_bundle_text(&text) {
                         Some(b) => start_project(b),
-                        None => home_error.set(
-                            "این فایل خوانده نشد؛ یک فایل پروژه چیدا با پسوند chida.json انتخاب کن."
-                                .to_string(),
-                        ),
+                        None => home_error.set(msg(
+                            lang.get_untracked(),
+                            "این فایل خوانده نشد؛ یک فایل پروژه چیدا با پسوند chida.json انتخاب کنید.",
+                            "This file could not be read. Please choose a Chida project file with the chida.json extension.",
+                        )),
                     }
                 }
             }
@@ -1820,14 +1995,22 @@ fn App() -> impl IntoView {
                             flows: Vec::new(),
                             styles: Vec::new(),
                         });
-                        render_note.set(format!(
-                            "قالب وردپرس وارد شد: {} صفحه و {} عنصر",
-                            summary.pages, summary.elements
-                        ));
+                        render_note.set(match lang.get_untracked() {
+                            Lang::Fa => format!(
+                                "قالب وردپرس وارد شد: {} صفحه و {} عنصر",
+                                summary.pages, summary.elements
+                            ),
+                            Lang::En => format!(
+                                "The WordPress theme was imported: {} pages and {} elements",
+                                summary.pages, summary.elements
+                            ),
+                        });
                     }
-                    Err(_) => home_error.set(
-                        "این فایل خوانده نشد؛ یک فایل zip قالب وردپرس انتخاب کن.".to_string(),
-                    ),
+                    Err(_) => home_error.set(msg(
+                        lang.get_untracked(),
+                        "این فایل خوانده نشد؛ یک فایل zip قالب وردپرس انتخاب کنید.",
+                        "This file could not be read. Please choose a WordPress theme zip file.",
+                    )),
                 }
             }
         }) as Box<dyn FnMut()>);
@@ -1851,7 +2034,7 @@ fn App() -> impl IntoView {
             }
         }
         bundle.set(blank_bundle());
-        saved_stamp.set("پروژه تازه ساخته شد و ذخیره پاک شد".to_string());
+        saved_stamp.set(SaveStamp::FreshProject);
     };
 
     let flat_canvas = move || {
@@ -1920,82 +2103,85 @@ fn App() -> impl IntoView {
         let id = format!("node-{}-{n}", kind_name(kind));
         let primary = bundle.with_untracked(|b| b.project.theme.primary);
         let ink = bundle.with_untracked(|b| b.project.theme.text);
+        // New nodes take their default name and text in the current UI
+        // language; the user edits them freely afterwards.
+        let lg = lang.get_untracked();
         let mut node = match kind {
             NodeKind::Frame => {
-                let mut f = Node::new(id, "فریم تازه", kind, px - 210.0, py - 150.0, 420.0, 300.0);
+                let mut f = Node::new(id, tr(lg, "فریم تازه", "New frame"), kind, px - 210.0, py - 150.0, 420.0, 300.0);
                 f.fill = Some(Color::WHITE);
                 f.stroke = Some(Color::rgb(200, 204, 208));
                 f.stroke_width = 1.0;
                 f
             }
             NodeKind::Rectangle => {
-                let mut r = Node::rect(id, "مستطیل تازه", px - 80.0, py - 50.0, 160.0, 100.0, primary);
+                let mut r = Node::rect(id, tr(lg, "مستطیل تازه", "New rectangle"), px - 80.0, py - 50.0, 160.0, 100.0, primary);
                 r.corner_radius = 8.0;
                 r
             }
-            NodeKind::Ellipse => Node::new(id, "دایره تازه", kind, px - 60.0, py - 60.0, 120.0, 120.0),
+            NodeKind::Ellipse => Node::new(id, tr(lg, "دایره تازه", "New ellipse"), kind, px - 60.0, py - 60.0, 120.0, 120.0),
             NodeKind::Divider => {
-                let mut d = Node::new(id, "خط تازه", kind, px - 80.0, py - 1.0, 160.0, 2.0);
+                let mut d = Node::new(id, tr(lg, "خط تازه", "New line"), kind, px - 80.0, py - 1.0, 160.0, 2.0);
                 d.fill = Some(ink);
                 d
             }
             NodeKind::Text => Node::text_node(
                 id,
-                "متن تازه",
+                tr(lg, "متن تازه", "New text"),
                 px - 100.0,
                 py - 15.0,
                 220.0,
                 34.0,
-                "متن تازه",
+                tr(lg, "متن تازه", "New text"),
                 18.0,
                 ink,
             ),
             NodeKind::Image => {
-                let mut im = Node::new(id, "تصویر تازه", kind, px - 110.0, py - 70.0, 220.0, 140.0);
+                let mut im = Node::new(id, tr(lg, "تصویر تازه", "New image"), kind, px - 110.0, py - 70.0, 220.0, 140.0);
                 im.fill = Some(Color::rgb(214, 226, 237));
                 im.corner_radius = 10.0;
                 im
             }
             NodeKind::Button => {
-                let mut b = Node::new(id, "دکمه تازه", kind, px - 75.0, py - 22.0, 150.0, 44.0);
+                let mut b = Node::new(id, tr(lg, "دکمه تازه", "New button"), kind, px - 75.0, py - 22.0, 150.0, 44.0);
                 b.fill = Some(primary);
                 b.corner_radius = 10.0;
-                b.text = Some("دکمه".into());
+                b.text = Some(tr(lg, "دکمه", "Button").into());
                 b.font_size = 15.0;
                 b.text_color = Some(Color::WHITE);
                 b.bold = true;
                 b
             }
             NodeKind::Card => {
-                let mut c = Node::new(id, "کارت تازه", kind, px - 120.0, py - 80.0, 240.0, 160.0);
+                let mut c = Node::new(id, tr(lg, "کارت تازه", "New card"), kind, px - 120.0, py - 80.0, 240.0, 160.0);
                 c.fill = Some(Color::WHITE);
                 c.corner_radius = 14.0;
                 c.stroke = Some(Color::rgb(210, 214, 218));
                 c.stroke_width = 1.0;
-                c.text = Some("کارت تازه".into());
+                c.text = Some(tr(lg, "کارت تازه", "New card").into());
                 c.font_size = 15.0;
                 c.text_color = Some(ink);
                 c
             }
             NodeKind::Path => {
-                let mut path = Node::polygon(id, "چندضلعی تازه", px - 70.0, py - 70.0, 140.0, 140.0, 5, primary);
+                let mut path = Node::polygon(id, tr(lg, "چندضلعی تازه", "New polygon"), px - 70.0, py - 70.0, 140.0, 140.0, 5, primary);
                 path.props.insert("poly_sides".into(), "5".into());
                 path
             }
             NodeKind::Arrow => {
-                let mut arrow = Node::new(id, "فلش تازه", NodeKind::Arrow, px - 90.0, py - 20.0, 180.0, 40.0);
+                let mut arrow = Node::new(id, tr(lg, "فلش تازه", "New arrow"), NodeKind::Arrow, px - 90.0, py - 20.0, 180.0, 40.0);
                 arrow.path_points = vec![PathPoint::anchor(0.0, 20.0), PathPoint::anchor(180.0, 20.0)];
                 arrow.stroke = Some(primary);
                 arrow.stroke_width = 3.0;
                 arrow
             }
             _ => {
-                let mut inp = Node::new(id, "ورودی تازه", NodeKind::Input, px - 120.0, py - 22.0, 240.0, 44.0);
+                let mut inp = Node::new(id, tr(lg, "ورودی تازه", "New input"), NodeKind::Input, px - 120.0, py - 22.0, 240.0, 44.0);
                 inp.fill = Some(Color::WHITE);
                 inp.corner_radius = 8.0;
                 inp.stroke = Some(Color::rgb(190, 196, 200));
                 inp.stroke_width = 1.0;
-                inp.text = Some("اینجا بنویسید".into());
+                inp.text = Some(tr(lg, "اینجا بنویسید", "Write here").into());
                 inp.font_size = 14.0;
                 inp.text_color = Some(ink);
                 inp
@@ -2033,7 +2219,7 @@ fn App() -> impl IntoView {
                 c += 1;
                 let mut node = Node::new(
                     format!("node-path-{c}"),
-                    "مسیر تازه",
+                    tr(lang.get_untracked(), "مسیر تازه", "New path"),
                     NodeKind::Path,
                     min_x,
                     min_y,
@@ -2530,7 +2716,7 @@ fn App() -> impl IntoView {
                 n.height = h;
                 match tool.get_untracked() {
                     Tool::Polygon => {
-                        let mut poly = Node::polygon(n.id.clone(), "چندضلعی تازه", x, y, w, h, 5, n.fill.unwrap_or(Color::rgb(239, 64, 86)));
+                        let mut poly = Node::polygon(n.id.clone(), tr(lang.get_untracked(), "چندضلعی تازه", "New polygon"), x, y, w, h, 5, n.fill.unwrap_or(Color::rgb(239, 64, 86)));
                         poly.props.insert("poly_sides".into(), "5".into());
                         poly.fill = n.fill;
                         poly.stroke = n.stroke;
@@ -2538,7 +2724,7 @@ fn App() -> impl IntoView {
                         n = poly;
                     }
                     Tool::Star => {
-                        let mut star = Node::star(n.id.clone(), "ستاره تازه", x, y, w, h, 5, 0.5, n.fill.unwrap_or(Color::rgb(239, 64, 86)));
+                        let mut star = Node::star(n.id.clone(), tr(lang.get_untracked(), "ستاره تازه", "New star"), x, y, w, h, 5, 0.5, n.fill.unwrap_or(Color::rgb(239, 64, 86)));
                         star.props.insert("star_points".into(), "5".into());
                         star.props.insert("star_ratio".into(), "0.5".into());
                         star.fill = n.fill;
@@ -2793,7 +2979,7 @@ fn App() -> impl IntoView {
                 created = page.root.group_children(&top_set, "group", &mut c);
                 for gid in &created {
                     if let Some(g) = page.root.find_mut(gid) {
-                        g.name = "گروه".to_string();
+                        g.name = tr(lang.get_untracked(), "گروه", "Group").to_string();
                     }
                 }
                 page.root.apply_layout();
@@ -2802,11 +2988,19 @@ fn App() -> impl IntoView {
         counter.set(c);
         persist();
         if created.is_empty() {
-            render_note.set("برای گروه بندی، دست کم دو عنصر هم سطح را انتخاب کنید.".to_string());
+            render_note.set(msg(
+                lang.get_untracked(),
+                "برای گروه‌بندی، دست‌کم دو عنصر هم‌سطح را انتخاب کنید.",
+                "To group, select at least two elements on the same level.",
+            ));
         } else {
             selected_id.set(created[0].clone());
             sel_set.set(created.iter().cloned().collect());
-            render_note.set("گروه ساخته شد.".to_string());
+            render_note.set(msg(
+                lang.get_untracked(),
+                "گروه ساخته شد.",
+                "The group was created.",
+            ));
         }
         ctx_menu.set(None);
     };
@@ -2828,11 +3022,19 @@ fn App() -> impl IntoView {
         });
         persist();
         if released.is_empty() {
-            render_note.set("عنصر انتخاب شده داخل گروه نیست.".to_string());
+            render_note.set(msg(
+                lang.get_untracked(),
+                "عنصر انتخاب‌شده داخل گروه نیست.",
+                "The selected element is not inside a group.",
+            ));
         } else {
             selected_id.set(released[0].clone());
             sel_set.set(released.iter().cloned().collect());
-            render_note.set("گروه باز شد.".to_string());
+            render_note.set(msg(
+            lang.get_untracked(),
+            "گروه باز شد.",
+            "The group was ungrouped.",
+        ));
         }
         ctx_menu.set(None);
     };
@@ -2860,7 +3062,7 @@ fn App() -> impl IntoView {
             c += 1;
             let key = format!("comp-{c}");
             let name = if tree.name.is_empty() {
-                "کامپوننت تازه".to_string()
+                tr(lang.get_untracked(), "کامپوننت تازه", "New component").to_string()
             } else {
                 tree.name.clone()
             };
@@ -2908,7 +3110,11 @@ fn App() -> impl IntoView {
         persist();
         if !instance_id.is_empty() {
             select_only(instance_id);
-            render_note.set("کامپوننت ساخته شد و یک نمونه از آن سر جایش ماند.".to_string());
+            render_note.set(msg(
+                lang.get_untracked(),
+                "کامپوننت ساخته شد و یک نمونه از آن سر جایش ماند.",
+                "The component was created and one instance stayed in place.",
+            ));
         }
     };
     /// Insert an instance of a master at the page centre area.
@@ -2968,7 +3174,11 @@ fn App() -> impl IntoView {
         });
         persist();
         if done {
-            render_note.set("نمونه جدا شد و به یک کپی ساده تبدیل شد.".to_string());
+            render_note.set(msg(
+            lang.get_untracked(),
+            "نمونه جدا شد و به یک کپی ساده تبدیل شد.",
+            "The instance was detached and became a plain copy.",
+        ));
         }
     };
     /// Open a master on a scratch page for editing. The scratch
@@ -2988,7 +3198,10 @@ fn App() -> impl IntoView {
             tree.y = 60.0;
             let mut page = Page::new(
                 format!("master-{key}"),
-                format!("ویرایش اصلی: {}", def.name),
+                match lang.get_untracked() {
+                    Lang::Fa => format!("ویرایش اصلی: {}", def.name),
+                    Lang::En => format!("Edit master: {}", def.name),
+                },
                 "/__master",
                 (tree.width + 160.0).max(480.0),
                 (tree.height + 160.0).max(360.0),
@@ -3040,7 +3253,11 @@ fn App() -> impl IntoView {
         selected_id.set(String::new());
         sel_set.set(BTreeSet::new());
         persist();
-        render_note.set("نسخه اصلی به روز شد و همه نمونه ها تغییر کردند.".to_string());
+        render_note.set(msg(
+            lang.get_untracked(),
+            "نسخه اصلی به‌روز شد و همه نمونه‌ها تغییر کردند.",
+            "The master was updated and all instances changed.",
+        ));
     };
     /// Align the whole selection to the page: every selected node
     /// shifts by the same page-space delta, so nested nodes (whose
@@ -3199,7 +3416,7 @@ fn App() -> impl IntoView {
         let n = counter.get_untracked();
         let mut node = Node::new(
             format!("node-image-{n}"),
-            "عکس آپلودی",
+            tr(lang.get_untracked(), "عکس آپلودی", "Uploaded image"),
             NodeKind::Image,
             200.0,
             160.0,
@@ -3468,6 +3685,7 @@ fn App() -> impl IntoView {
                 } else {
                     select_only(String::new());
                     ctx_menu.set(None);
+                    menu_open.set(false);
                 }
             }
             _ => {
@@ -3539,78 +3757,69 @@ fn App() -> impl IntoView {
         pan.set((0.0, 0.0));
     };
 
-    // The tool rail: tool, icon, Persian label, shortcut key (empty
-    // for none). Which tools show depends on the editor level.
+    // The tool rail: tool, Persian label, English label, shortcut key
+    // (empty for none). Which tools show depends on the editor level.
+    // Icons come from `tool_icon` (one SVG set); groups from `rail_group`.
     let tools: Vec<(Tool, &'static str, &'static str, &'static str)> = vec![
-        (Tool::Move, "➤", "انتخاب", "V"),
-        (Tool::Hand, "✋", "دست", "H"),
-        (Tool::Text, "T", "متن", "T"),
-        (Tool::Image, "🖼", "تصویر", ""),
-        (Tool::Frame, "▢", "فریم", "F"),
-        (Tool::Rect, "▭", "مستطیل", "R"),
-        (Tool::Ellipse, "●", "دایره", "O"),
-        (Tool::Line, "―", "خط", "L"),
-        (Tool::Button, "▣", "دکمه", ""),
-        (Tool::Card, "▤", "کارت", ""),
-        (Tool::Input, "⌨", "ورودی", ""),
-        (Tool::Pen, "✒", "قلم", "P"),
-        (Tool::Polygon, "⬠", "چندضلعی", ""),
-        (Tool::Star, "★", "ستاره", ""),
-        (Tool::Arrow, "➜", "فلش", ""),
+        (Tool::Move, "انتخاب", "Select", "V"),
+        (Tool::Hand, "دست", "Pan", "H"),
+        (Tool::Text, "متن", "Text", "T"),
+        (Tool::Image, "تصویر", "Image", ""),
+        (Tool::Frame, "فریم", "Frame", "F"),
+        (Tool::Rect, "مستطیل", "Rectangle", "R"),
+        (Tool::Ellipse, "دایره", "Ellipse", "O"),
+        (Tool::Line, "خط", "Line", "L"),
+        (Tool::Button, "دکمه", "Button", ""),
+        (Tool::Card, "کارت", "Card", ""),
+        (Tool::Input, "ورودی", "Input", ""),
+        (Tool::Pen, "قلم", "Pen", "P"),
+        (Tool::Polygon, "چندضلعی", "Polygon", ""),
+        (Tool::Star, "ستاره", "Star", ""),
+        (Tool::Arrow, "فلش", "Arrow", ""),
     ];
 
     view! {
-        <main class="shell" on:mousemove=on_mouse_move on:mouseup=on_mouse_up>
+        <main class="shell" dir=move || tr(lang.get(), "rtl", "ltr") on:mousemove=on_mouse_move on:mouseup=on_mouse_up>
             <header class="topbar">
                 <div class="brand">
-                    <img class="logo-img" src="assets/logo-mark.svg" alt="Chida"/>
+                    <span class="logo-chip"><img class="logo-img" src="assets/logo-mark.svg" alt="Chida"/></span>
                     <strong>"چیدا"</strong>
                     <span class="project-name">{move || bundle.with(|b| b.project.name.clone())}</span>
                 </div>
                 <div class="history-btns">
-                    <button title="واگردانی" disabled=move || past.with(|p| p.is_empty()) on:click=undo>"↩"</button>
-                    <button title="از نو" disabled=move || future.with(|f| f.is_empty()) on:click=redo>"↪"</button>
+                    <button title=t("واگردانی", "Undo") aria-label=t("واگردانی", "Undo") disabled=move || past.with(|p| p.is_empty()) on:click=undo>"↩"</button>
+                    <button title=t("از نو", "Redo") aria-label=t("از نو", "Redo") disabled=move || future.with(|f| f.is_empty()) on:click=redo>"↪"</button>
                 </div>
-                <nav class="levels" aria-label="سطح ویرایشگر">
-                    <button class:active=move || level.get() == 1 on:click=move |_| { level.set(1); if tool.get_untracked().min_level() > 1 { tool.set(Tool::Move); } if tab.get() > 0 { tab.set(0); } }>"ساده"</button>
-                    <button class:active=move || level.get() == 2 on:click=move |_| { level.set(2); if tool.get_untracked().min_level() > 2 { tool.set(Tool::Move); } if tab.get() == 1 || tab.get() == 3 { tab.set(0); } }>"سازنده"</button>
-                    <button class:active=move || level.get() == 3 on:click=move |_| level.set(3)>"حرفه‌ای"</button>
+                <div class="lang-switch" role="group" aria-label=t("زبان رابط کاربری", "Interface language")>
+                    <button class:active=move || lang.get() == Lang::Fa on:click=move |_| { lang.set(Lang::Fa); save_lang(Lang::Fa); render_note.set(String::new()); }>"فارسی"</button>
+                    <button class:active=move || lang.get() == Lang::En on:click=move |_| { lang.set(Lang::En); save_lang(Lang::En); render_note.set(String::new()); }>"English"</button>
+                </div>
+                <nav class="levels" aria-label=t("سطح ویرایشگر", "Editor level")>
+                    <button class:active=move || level.get() == 1 on:click=move |_| { level.set(1); if tool.get_untracked().min_level() > 1 { tool.set(Tool::Move); } if tab.get() > 0 { tab.set(0); } }>{t("ساده", "Simple")}</button>
+                    <button class:active=move || level.get() == 2 on:click=move |_| { level.set(2); if tool.get_untracked().min_level() > 2 { tool.set(Tool::Move); } if tab.get() == 1 || tab.get() == 3 { tab.set(0); } }>{t("سازنده", "Builder")}</button>
+                    <button class:active=move || level.get() == 3 on:click=move |_| level.set(3)>{t("حرفه‌ای", "Pro")}</button>
                 </nav>
                 <div class="zoom-box">
-                    <button title="کوچک نمایی" on:click=zoom_out>"−"</button>
-                    <span class="zoom-label">{move || format!("٪{}", (scale() * 100.0).round() as i32)}</span>
-                    <button title="بزرگ نمایی" on:click=zoom_in>"+"</button>
-                    <button class="fit-btn" title="جا دادن صفحه در نما" on:click=zoom_fit>"جا دادن"</button>
+                    <button title=t("کوچک‌نمایی", "Zoom out") aria-label=t("کوچک‌نمایی", "Zoom out") on:click=zoom_out>"−"</button>
+                    <span class="zoom-label">{move || match lang.get() {
+                        Lang::Fa => format!("٪{}", (scale() * 100.0).round() as i32),
+                        Lang::En => format!("{}%", (scale() * 100.0).round() as i32),
+                    }}</span>
+                    <button title=t("بزرگ‌نمایی", "Zoom in") aria-label=t("بزرگ‌نمایی", "Zoom in") on:click=zoom_in>"+"</button>
+                    <button class="fit-btn" title=t("نمایش کامل صفحه", "Fit the page in view") on:click=zoom_fit>{t("جا دادن", "Fit")}</button>
                 </div>
                 <div class="top-actions">
-                    <button title="برگرد به صفحه شروع" on:click=move |_| home_open.set(true)>"🏠 خانه"</button>
+                    <button title=t("بازگشت به صفحه شروع", "Back to the start screen") on:click=move |_| home_open.set(true)>
+                        <span class="btn-icon" inner_html=HOME_SVG></span>
+                        {t("خانه", "Home")}
+                    </button>
                     <button class="preview-btn" on:click=move |_| {
                         preview_page.set(page_index.get_untracked());
                         preview.set(true);
-                    }>"▶ پیش‌نمایش"</button>
-                    <button on:click=move |_| {
-                        let target = selected_node()
-                            .filter(|n| n.kind == NodeKind::Image)
-                            .map(|n| n.id.clone());
-                        trigger_upload(target);
-                    }>"آپلود عکس"</button>
-                    <button on:click=move |_| {
-                        bundle.with(|b| {
-                            if let Some(page) = b.project.pages.get(page_index.get_untracked()) {
-                                download_text(&format!("{}.svg", page.id), &page_svg(&b.project, page), "image/svg+xml");
-                                render_note.set(format!("رندر SVG صفحه {} دانلود شد", page.name));
-                            }
-                        });
-                    }>"رندر"</button>
-                    <button on:click=move |_| { level.set(3); tab.set(3); }>"ساخت کد"</button>
-                    <button class="publish" disabled title="انتشار آنلاین در نسخه وب فعال نیست؛ پروژه را با خروجی JSON یا ساخت کد تحویل بگیرید">"انتشار"</button>
-                    <button class="export" on:click=move |_| {
-                        bundle.with(|b| {
-                            if let Ok(raw) = serde_json::to_string_pretty(&b.project) {
-                                download_text(&format!("{}.chida.json", b.project.id), &raw, "application/json");
-                            }
-                        });
-                    }>"خروجی JSON"</button>
+                    }>
+                        <span class="btn-icon" inner_html=PLAY_SVG></span>
+                        {t("پیش‌نمایش", "Preview")}
+                    </button>
                     <button class="export" on:click=move |_| {
                         bundle.with(|b| {
                             let files = chida_wp::export_theme(&b.project);
@@ -3623,14 +3832,59 @@ fn App() -> impl IntoView {
                                         .cloned()
                                         .unwrap_or_else(|| b.project.id.clone());
                                     download_bytes(&format!("{slug}.zip"), &bytes);
-                                    render_note.set("قالب وردپرس دانلود شد".to_string());
+                                    render_note.set(msg(lang.get_untracked(), "قالب وردپرس دانلود شد", "The WordPress theme was downloaded"));
                                 }
                                 Err(e) => {
-                                    render_note.set(format!("ساخت قالب وردپرس نشد: {e}"));
+                                    render_note.set(match lang.get_untracked() {
+                                        Lang::Fa => format!("ساخت قالب وردپرس انجام نشد: {e}"),
+                                        Lang::En => format!("The WordPress theme could not be built: {e}"),
+                                    });
                                 }
                             }
                         });
-                    }>"خروجی وردپرس"</button>
+                    }>{t("خروجی وردپرس", "WordPress export")}</button>
+                    <div class="top-menu">
+                        <button class="menu-btn" aria-haspopup="menu" aria-expanded=move || menu_open.get() on:click=move |_| menu_open.update(|m| *m = !*m)>
+                            {t("بیشتر", "More")}
+                            <span class="btn-icon" inner_html=CHEVRON_SVG></span>
+                        </button>
+                        {move || menu_open.get().then(|| view! {
+                            <div class="menu-drop" role="menu">
+                                <button role="menuitem" on:click=move |_| {
+                                    menu_open.set(false);
+                                    let target = selected_node()
+                                        .filter(|n| n.kind == NodeKind::Image)
+                                        .map(|n| n.id.clone());
+                                    trigger_upload(target);
+                                }>{t("آپلود عکس", "Upload image")}</button>
+                                <button role="menuitem" on:click=move |_| {
+                                    menu_open.set(false);
+                                    bundle.with(|b| {
+                                        if let Some(page) = b.project.pages.get(page_index.get_untracked()) {
+                                            download_text(&format!("{}.svg", page.id), &page_svg(&b.project, page), "image/svg+xml");
+                                            render_note.set(match lang.get_untracked() {
+                                                Lang::Fa => format!("فایل SVG صفحه {} دانلود شد", page.name),
+                                                Lang::En => format!("The SVG file of page {} was downloaded", page.name),
+                                            });
+                                        }
+                                    });
+                                }>{t("رندر SVG", "Render SVG")}</button>
+                                <button role="menuitem" on:click=move |_| { menu_open.set(false); level.set(3); tab.set(3); }>{t("ساخت کد", "Build code")}</button>
+                                <button role="menuitem" on:click=move |_| {
+                                    menu_open.set(false);
+                                    bundle.with(|b| {
+                                        if let Ok(raw) = serde_json::to_string_pretty(&b.project) {
+                                            download_text(&format!("{}.chida.json", b.project.id), &raw, "application/json");
+                                        }
+                                    });
+                                }>{t("خروجی JSON", "JSON export")}</button>
+                                <button role="menuitem" class="publish" disabled title=t("انتشار آنلاین در نسخه وب فعال نیست؛ پروژه را با خروجی JSON یا ساخت کد تحویل بگیرید", "Online publishing is not active in the web version. Please export the project as JSON or build its code.")>{t("انتشار", "Publish")}</button>
+                            </div>
+                        })}
+                    </div>
+                    {move || menu_open.get().then(|| view! {
+                        <div class="menu-backdrop" on:mousedown=move |_| menu_open.set(false)></div>
+                    })}
                 </div>
             </header>
 
@@ -3638,43 +3892,55 @@ fn App() -> impl IntoView {
                 <aside class="rail">
                     {move || {
                         let lv = level.get();
-                        tools.iter().copied()
-                            .filter(|(t, _, _, _)| t.min_level() <= lv)
-                            .map(|(t, icon, label, key)| {
-                                let title = if key.is_empty() {
-                                    label.to_string()
-                                } else {
-                                    format!("{label} ({key})")
-                                };
-                                view! {
-                                    <button
-                                        class="tool"
-                                        class:active=move || tool.get() == t
-                                        title=title
-                                        on:click=move |_| {
-                                            if t == Tool::Image {
-                                                // The image tool is the
-                                                // upload picker itself.
-                                                upload_target.set(None);
-                                                if let Some(input) = file_ref.get_untracked() {
-                                                    input.click();
-                                                }
-                                            } else {
-                                                tool.set(t);
+                        let lg = lang.get();
+                        let mut group: Option<u8> = None;
+                        let mut out = Vec::new();
+                        for (t, fa, en, key) in tools.iter().copied() {
+                            if t.min_level() > lv {
+                                continue;
+                            }
+                            let g = t.rail_group();
+                            if group.is_some_and(|prev| prev != g) {
+                                out.push(view! { <div class="rail-sep" aria-hidden="true"></div> }.into_any());
+                            }
+                            group = Some(g);
+                            let label = tr(lg, fa, en);
+                            let title = if key.is_empty() {
+                                label.to_string()
+                            } else {
+                                format!("{label} ({key})")
+                            };
+                            out.push(view! {
+                                <button
+                                    class="tool"
+                                    class:active=move || tool.get() == t
+                                    title=title.clone()
+                                    aria-label=title
+                                    on:click=move |_| {
+                                        if t == Tool::Image {
+                                            // The image tool is the
+                                            // upload picker itself.
+                                            upload_target.set(None);
+                                            if let Some(input) = file_ref.get_untracked() {
+                                                input.click();
                                             }
+                                        } else {
+                                            tool.set(t);
                                         }
-                                    >
-                                        <span class="tool-icon">{icon}</span>
-                                        <span class="tool-label">{label}</span>
-                                    </button>
-                                }
-                            }).collect_view()
+                                    }
+                                >
+                                    <span class="tool-icon" inner_html=tool_icon(t)></span>
+                                    <span class="tool-label">{label}</span>
+                                </button>
+                            }.into_any());
+                        }
+                        out
                     }}
                 </aside>
 
                 <aside class="left-panel">
                     <section class="pages-box">
-                        <h3>"صفحات"</h3>
+                        <h3>{t("صفحات", "Pages")}</h3>
                         {move || bundle.with(|b| {
                             b.project.pages.iter().enumerate().map(|(i, pg)| {
                                 let (name, route) = (pg.name.clone(), pg.route.clone());
@@ -3693,23 +3959,23 @@ fn App() -> impl IntoView {
                     </section>
                     <section class="layers-box">
                         <div class="panel-tabs">
-                            <button class:active=move || left_tab.get() == 0 on:click=move |_| left_tab.set(0)>"لایه‌ها"</button>
-                            <button class:active=move || left_tab.get() == 1 on:click=move |_| left_tab.set(1)>"اجزا"</button>
+                            <button class:active=move || left_tab.get() == 0 on:click=move |_| left_tab.set(0)>{t("لایه‌ها", "Layers")}</button>
+                            <button class:active=move || left_tab.get() == 1 on:click=move |_| left_tab.set(1)>{t("اجزا", "Components")}</button>
                             {move || (level.get() >= 2).then(|| view! {
-                                <button class:active=move || left_tab.get() == 2 on:click=move |_| left_tab.set(2)>"استایل‌ها"</button>
+                                <button class:active=move || left_tab.get() == 2 on:click=move |_| left_tab.set(2)>{t("استایل‌ها", "Styles")}</button>
                             })}
                         </div>
                         {move || (left_tab.get() == 1).then(|| view! {
                             <div class="components">
                                 {move || (level.get() >= 3).then(|| view! {
                                     <div class="masters-box">
-                                        <h4 class="cat-title">"کامپوننت ها"</h4>
-                                        <p class="hint">"از انتخاب فعلی یک کامپوننت بسازید. نمونه ها از روی نسخه اصلی کشیده می شوند و با ویرایش اصلی، همه با هم عوض می شوند."</p>
-                                        <button class="comp-create" disabled=move || selected_id.get().is_empty() on:click=move |_| make_component()>"ساخت کامپوننت از انتخاب"</button>
+                                        <h4 class="cat-title">{t("کامپوننت‌ها", "Components")}</h4>
+                                        <p class="hint">{t("از عنصر انتخاب‌شده یک کامپوننت بسازید. نمونه‌ها از روی نسخه اصلی کشیده می‌شوند و با ویرایش نسخه اصلی، همه با هم تغییر می‌کنند.", "Make a component from the selected element. Instances are drawn from the master, so editing the master changes all of them together.")}</p>
+                                        <button class="comp-create" disabled=move || selected_id.get().is_empty() on:click=move |_| make_component()>{t("ساخت کامپوننت از انتخاب", "Make a component from the selection")}</button>
                                         {move || {
                                             let masters = bundle.with(|b| b.project.components.clone());
                                             if masters.is_empty() {
-                                                return view! { <p class="hint">"هنوز کامپوننتی ساخته نشده است."</p> }.into_any();
+                                                return view! { <p class="hint">{t("هنوز کامپوننتی ساخته نشده است.", "No component has been made yet.")}</p> }.into_any();
                                             }
                                             masters.into_iter().map(|def| {
                                                 let key_ins = def.id.clone();
@@ -3717,38 +3983,39 @@ fn App() -> impl IntoView {
                                                 view! {
                                                     <div class="master-row">
                                                         <span class="master-name">{def.name.clone()}</span>
-                                                        <button class="mini" on:click=move |_| insert_instance(key_ins.clone())>"درج نمونه"</button>
-                                                        <button class="mini" on:click=move |_| open_master(key_edit.clone())>"ویرایش اصلی"</button>
+                                                        <button class="mini" on:click=move |_| insert_instance(key_ins.clone())>{t("درج نمونه", "Insert instance")}</button>
+                                                        <button class="mini" on:click=move |_| open_master(key_edit.clone())>{t("ویرایش اصلی", "Edit master")}</button>
                                                     </div>
                                                 }
                                             }).collect_view().into_any()
                                         }}
                                     </div>
                                 })}
-                                <h4 class="cat-title">"بخش ها"</h4>
-                                <p class="hint">"با یک کلیک، بخش آماده با استایل کامل وسط صفحه درج می شود. بلوک ها کپی ساده اند، نه نمونه کامپوننت."</p>
+                                <h4 class="cat-title">{t("بخش‌ها", "Sections")}</h4>
+                                <p class="hint">{t("با یک کلیک، یک بخش آماده با ظاهر کامل در میانه صفحه درج می‌شود. این بلوک‌ها کپی ساده هستند، نه نمونه کامپوننت.", "With one click, a ready section with its full styling is placed in the middle of the page. These blocks are plain copies, not component instances.")}</p>
                                 {[
-                                    ("اجزای پایه", &[("btn-primary", "🔘", "دکمه اصلی"), ("btn-secondary", "⚪", "دکمه دوم"), ("badge", "🏷", "نشان"), ("avatar", "👤", "آواتار با نام"), ("table", "📋", "جدول ساده"), ("product-card", "🛍", "کارت محصول با عکس")][..]),
-                                    ("نوبارها", &[("navbar", "🧭", "نوبار"), ("navbar-search", "🔎", "نوبار با جستجو")][..]),
-                                    ("هیروها", &[("hero", "🖼", "هیرو با عکس"), ("hero-center", "🎯", "هیروی وسط چین"), ("hero-app", "📱", "هیروی اپ")][..]),
-                                    ("ویژگی ها", &[("features", "✨", "بخش ویژگی ها"), ("features-four", "🧩", "چهار ویژگی"), ("steps", "👣", "سه گام")][..]),
-                                    ("قیمت گذاری", &[("price-card", "💳", "کارت قیمت"), ("pricing-three", "💰", "قیمت گذاری سه طرح")][..]),
-                                    ("نظرات مشتریان", &[("testimonials", "💬", "نظرات مشتریان")][..]),
-                                    ("گالری", &[("gallery", "🖼", "گالری عکس")][..]),
-                                    ("فرم ها", &[("input", "⌨", "ورودی فرم"), ("contact-form", "✉", "فرم تماس"), ("newsletter", "📰", "خبرنامه")][..]),
-                                    ("فوترها", &[("footer-simple", "⬛", "فوتر ساده"), ("footer-cols", "🗂", "فوتر چند ستونه")][..]),
-                                    ("فراخوان ها", &[("cta-banner", "📣", "فراخوان پهن"), ("cta-card", "🪧", "کارت فراخوان")][..]),
-                                ].into_iter().map(|(cat, items)| {
+                                    ("basics", "اجزای پایه", "Basics", &[("btn-primary", "دکمه اصلی", "Primary button"), ("btn-secondary", "دکمه دوم", "Secondary button"), ("badge", "نشان", "Badge"), ("avatar", "آواتار با نام", "Avatar with name"), ("table", "جدول ساده", "Simple table"), ("product-card", "کارت محصول با عکس", "Product card with image")][..]),
+                                    ("navbars", "نوبارها", "Navbars", &[("navbar", "نوبار", "Navbar"), ("navbar-search", "نوبار با جستجو", "Navbar with search")][..]),
+                                    ("heroes", "هیروها", "Heroes", &[("hero", "هیرو با عکس", "Hero with image"), ("hero-center", "هیروی وسط‌چین", "Centered hero"), ("hero-app", "هیروی اپ", "App hero")][..]),
+                                    ("features", "ویژگی‌ها", "Features", &[("features", "بخش ویژگی‌ها", "Features section"), ("features-four", "چهار ویژگی", "Four features"), ("steps", "سه گام", "Three steps")][..]),
+                                    ("pricing", "قیمت‌گذاری", "Pricing", &[("price-card", "کارت قیمت", "Price card"), ("pricing-three", "قیمت‌گذاری سه طرح", "Three-plan pricing")][..]),
+                                    ("testimonials", "نظرات مشتریان", "Testimonials", &[("testimonials", "نظرات مشتریان", "Customer testimonials")][..]),
+                                    ("gallery", "گالری", "Gallery", &[("gallery", "گالری عکس", "Photo gallery")][..]),
+                                    ("forms", "فرم‌ها", "Forms", &[("input", "ورودی فرم", "Form input"), ("contact-form", "فرم تماس", "Contact form"), ("newsletter", "خبرنامه", "Newsletter")][..]),
+                                    ("footers", "فوترها", "Footers", &[("footer-simple", "فوتر ساده", "Simple footer"), ("footer-cols", "فوتر چندستونه", "Multi-column footer")][..]),
+                                    ("cta", "فراخوان‌ها", "Call to action", &[("cta-banner", "فراخوان پهن", "Wide banner"), ("cta-card", "کارت فراخوان", "Call-to-action card")][..]),
+                                ].into_iter().map(|(cat_key, cat_fa, cat_en, items)| {
                                     view! {
                                         <div class="comp-cat">
-                                            <h5 class="cat-head">{cat}</h5>
+                                            <h5 class="cat-head">{t(cat_fa, cat_en)}</h5>
                                             <div class="comp-grid">
-                                                {items.iter().map(|(key, icon, label)| {
-                                                    let (key, icon, label) = (*key, *icon, *label);
+                                                {items.iter().map(|(key, fa, en)| {
+                                                    let (key, fa, en) = (*key, *fa, *en);
+                                                    let icon = section_icon(cat_key);
                                                     view! {
                                                         <button class="comp-card" data-comp=key on:click=move |_| insert_component(key)>
-                                                            <span class="comp-icon">{icon}</span>
-                                                            <span class="comp-name">{label}</span>
+                                                            <span class="comp-icon" inner_html=icon></span>
+                                                            <span class="comp-name">{t(fa, en)}</span>
                                                         </button>
                                                     }
                                                 }).collect_view()}
@@ -3760,15 +4027,15 @@ fn App() -> impl IntoView {
                         })}
                         {move || (left_tab.get() == 2).then(|| view! {
                             <div class="styles-panel">
-                                <p class="hint">"ظاهر عنصر انتخاب شده (رنگ، گرادیان، متن و گردی) را با یک نام ذخیره کنید و با یک کلیک روی هر عنصر دیگری اعمال کنید."</p>
+                                <p class="hint">{t("ظاهر عنصر انتخاب‌شده (رنگ، گرادیان، متن و گردی گوشه) را با یک نام ذخیره کنید و با یک کلیک روی هر عنصر دیگری اعمال کنید.", "Save the look of the selected element (color, gradient, text and corner radius) under a name, and apply it to any other element with one click.")}</p>
                                 <div class="style-save">
-                                    <input type="text" placeholder="نام استایل" prop:value=move || style_name.get() on:input=move |ev| style_name.set(event_target_value(&ev)) />
-                                    <button class="style-save-btn" disabled=move || selected_id.get().is_empty() on:click=move |_| save_style()>"ذخیره"</button>
+                                    <input type="text" placeholder=t("نام استایل", "Style name") prop:value=move || style_name.get() on:input=move |ev| style_name.set(event_target_value(&ev)) />
+                                    <button class="style-save-btn" disabled=move || selected_id.get().is_empty() on:click=move |_| save_style()>{t("ذخیره", "Save")}</button>
                                 </div>
                                 {move || {
                                     let styles = bundle.with(|b| b.styles.clone());
                                     if styles.is_empty() {
-                                        return view! { <p class="hint">"هنوز استایلی ذخیره نشده است."</p> }.into_any();
+                                        return view! { <p class="hint">{t("هنوز استایلی ذخیره نشده است.", "No style has been saved yet.")}</p> }.into_any();
                                     }
                                     styles.into_iter().map(|st| {
                                         let st_apply = st.clone();
@@ -3780,8 +4047,8 @@ fn App() -> impl IntoView {
                                         view! {
                                             <div class="style-row">
                                                 <span class="style-swatch" style=swatch></span>
-                                                <button class="style-apply" title="اعمال روی عنصر انتخاب شده" on:click=move |_| apply_style(st_apply.clone())>{st.name.clone()}</button>
-                                                <button class="mini danger" title="حذف استایل" on:click=move |_| delete_style(name_del.clone())>"✕"</button>
+                                                <button class="style-apply" title=t("اعمال روی عنصر انتخاب‌شده", "Apply to the selected element") on:click=move |_| apply_style(st_apply.clone())>{st.name.clone()}</button>
+                                                <button class="mini danger" title=t("حذف استایل", "Delete style") aria-label=t("حذف استایل", "Delete style") on:click=move |_| delete_style(name_del.clone())>"✕"</button>
                                             </div>
                                         }
                                     }).collect_view().into_any()
@@ -3868,7 +4135,7 @@ fn App() -> impl IntoView {
                                             layer_drag_id.set(String::new());
                                         }
                                     >
-                                        <span class="layer-icon">{kind_icon(n.kind)}</span>
+                                        <span class="layer-icon" inner_html=kind_icon(n.kind)></span>
                                         {move || if rename_id.get() == id_rename {
                                             let id_commit = id_rename.clone();
                                             view! {
@@ -3904,11 +4171,12 @@ fn App() -> impl IntoView {
                                                 <span class="layer-name" on:dblclick=move |ev: leptos::ev::MouseEvent| { ev.stop_propagation(); rename_id.set(id_d.clone()); }>{name_val.clone()}</span>
                                             }.into_any()
                                         }}
-                                        {(!is_simple).then(|| view! { <span class="layer-kind">{kind_fa(n.kind)}</span> })}
+                                        {(!is_simple).then(|| view! { <span class="layer-kind">{move || kind_label(n.kind, lang.get())}</span> })}
                                         <button
                                             class="mini"
                                             class:off=!n.visible
-                                            title="نمایش یا پنهان کردن"
+                                            title=t("نمایش یا پنهان کردن", "Show or hide")
+                                            aria-label=t("نمایش یا پنهان کردن", "Show or hide")
                                             on:click=move |ev: leptos::ev::MouseEvent| {
                                                 ev.stop_propagation();
                                                 record("visibility");
@@ -3921,11 +4189,12 @@ fn App() -> impl IntoView {
                                                     }
                                                 });
                                             }
-                                        >{if n.visible { "👁" } else { "🚫" }}</button>
+                                        ><span class="mini-icon" inner_html=if n.visible { EYE_SVG } else { EYE_OFF_SVG }></span></button>
                                         <button
                                             class="mini"
                                             class:off=move || !locked.with(|l| l.contains(&id_lock_class))
-                                            title="قفل کردن لایه"
+                                            title=t("قفل کردن لایه", "Lock the layer")
+                                            aria-label=t("قفل کردن لایه", "Lock the layer")
                                             on:click=move |ev: leptos::ev::MouseEvent| {
                                                 ev.stop_propagation();
                                                 let id = id_lock.clone();
@@ -3935,7 +4204,7 @@ fn App() -> impl IntoView {
                                                     }
                                                 });
                                             }
-                                        >{move || if locked.with(|l| l.contains(&id_lock_icon)) { "🔒" } else { "🔓" }}</button>
+                                        ><span class="mini-icon" inner_html=move || if locked.with(|l| l.contains(&id_lock_icon)) { LOCK_SVG } else { UNLOCK_SVG }></span></button>
                                     </div>
                                 }
                             }).collect_view()
@@ -3947,8 +4216,8 @@ fn App() -> impl IntoView {
                 <section class="workspace" on:mousedown=on_workspace_mousedown>
                     {move || master_edit.get().map(|_| view! {
                         <div class="master-banner">
-                            <span>"در حال ویرایش نسخه اصلی کامپوننت هستید. هر تغییری روی همه نمونه ها می نشیند."</span>
-                            <button on:click=move |_| finish_master()>"تمام شد، برگرد"</button>
+                            <span>{t("در حال ویرایش نسخه اصلی کامپوننت هستید. هر تغییری روی همه نمونه‌ها می‌نشیند.", "You are editing the component master. Every change applies to all instances.")}</span>
+                            <button on:click=move |_| finish_master()>{t("پایان ویرایش و بازگشت", "Finish editing and go back")}</button>
                         </div>
                     })}
                     <div
@@ -3957,7 +4226,7 @@ fn App() -> impl IntoView {
                     >
                         <div
                             class="ruler-x"
-                            title="از اینجا به پایین بکشید تا خط راهنمای افقی بسازید"
+                            title=t("از اینجا به پایین بکشید تا یک خط راهنمای افقی بسازید", "Drag down from here to create a horizontal guide")
                             style=move || {
                                 let (w, _) = page_size();
                                 format!("width:{}px;", w * scale())
@@ -3993,7 +4262,7 @@ fn App() -> impl IntoView {
                         <div class="canvas-row">
                         <div
                             class="ruler-y"
-                            title="از اینجا به کنار بکشید تا خط راهنمای عمودی بسازید"
+                            title=t("از اینجا به کنار بکشید تا یک خط راهنمای عمودی بسازید", "Drag sideways from here to create a vertical guide")
                             style=move || {
                                 let (_, h) = page_size();
                                 format!("height:{}px;", h * scale())
@@ -4052,7 +4321,7 @@ fn App() -> impl IntoView {
                                     let label = if n.src.is_some() {
                                         String::new()
                                     } else if n.kind == NodeKind::Image {
-                                        "🖼".to_string()
+                                        tr(lang.get(), "تصویر", "Image").to_string()
                                     } else {
                                         n.text.clone().unwrap_or_default()
                                     };
@@ -4223,7 +4492,7 @@ fn App() -> impl IntoView {
                                         >
                                             {label}
                                             {svg_html.map(|html| view! { <span class="node-svg" inner_html=html></span> })}
-                                            {has_inter.then(|| view! { <span class="link-badge" title="این عنصر تعامل دارد">"🔗"</span> })}
+                                            {has_inter.then(|| view! { <span class="link-badge" title=t("این عنصر تعامل دارد", "This element has an interaction")><span class="mini-icon" inner_html=LINK_SVG></span></span> })}
                                         </div>
                                     }
                                 }).collect_view()}
@@ -4500,6 +4769,29 @@ fn App() -> impl IntoView {
                                     }).collect_view()
                                 }}
                             </div>
+                            {move || {
+                                // Blank page: the only node is the locked
+                                // backdrop frame (or nothing at all). A
+                                // friendly first step, gone the moment the
+                                // user draws anything.
+                                let blank = bundle.with(|b| {
+                                    b.project.pages.get(page_index.get()).map(|pg| {
+                                        let mut count = 0usize;
+                                        let mut stack: Vec<&Node> = pg.root.children.iter().collect();
+                                        while let Some(n) = stack.pop() {
+                                            count += 1;
+                                            stack.extend(n.children.iter());
+                                        }
+                                        count <= 1
+                                    }).unwrap_or(false)
+                                });
+                                blank.then(|| view! {
+                                    <div class="canvas-empty">
+                                        <p>{t("صفحه خالی است. از نوار ابزار یک شکل بکشید، یا یک بخش آماده را درج کنید.", "This page is empty. Draw a shape from the toolbar, or insert a ready-made section.")}</p>
+                                        <button on:click=move |_| left_tab.set(1)>{t("درج بخش آماده", "Insert a ready section")}</button>
+                                    </div>
+                                })
+                            }}
                         </div>
                         </div>
                     </div>
@@ -4507,17 +4799,21 @@ fn App() -> impl IntoView {
 
                 <aside class="right-panel">
                     <nav class="tabs">
-                        <button class:active=move || tab.get() == 0 on:click=move |_| tab.set(0)>"طراحی"</button>
+                        <button class:active=move || tab.get() == 0 on:click=move |_| tab.set(0)>{t("طراحی", "Design")}</button>
                         {move || (level.get() >= 2).then(|| view! {
-                            <button class:active=move || tab.get() == 2 on:click=move |_| tab.set(2)>"داده"</button>
+                            <button class:active=move || tab.get() == 2 on:click=move |_| tab.set(2)>{t("داده", "Data")}</button>
                         })}
                         {move || (level.get() >= 3).then(|| view! {
-                            <button class:active=move || tab.get() == 1 on:click=move |_| tab.set(1)>"منطق"</button>
-                            <button class:active=move || tab.get() == 3 on:click=move |_| tab.set(3)>"کد"</button>
+                            <button class:active=move || tab.get() == 1 on:click=move |_| tab.set(1)>{t("منطق", "Logic")}</button>
+                            <button class:active=move || tab.get() == 3 on:click=move |_| tab.set(3)>{t("کد", "Code")}</button>
                         })}
                     </nav>
                     <div class="tab-body">
                     {move || {
+                        // The whole right panel re-renders on a language
+                        // change, so computed labels (flows, tables) flip
+                        // with the rest of the UI.
+                        let _ = lang.get();
                         let effective = match (level.get(), tab.get()) {
                             (1, _) => 0,
                             (2, 1) | (2, 3) => 0,
@@ -4526,24 +4822,31 @@ fn App() -> impl IntoView {
                         match effective {
                             1 => view! {
                                 <div class="flows">
-                                    <h3>"جریان‌های منطق"</h3>
+                                    <h3>{t("جریان‌های منطق", "Logic flows")}</h3>
                                     {bundle.with(|b| {
                                         if b.flows.is_empty() {
-                                            return view! { <p class="hint">"این پروژه هنوز جریانی ندارد."</p> }.into_any();
+                                            return view! { <p class="hint">{t("این پروژه هنوز جریانی ندارد.", "This project has no flow yet.")}</p> }.into_any();
                                         }
                                         b.flows.iter().map(|f| {
                                             let mut lines = Vec::new();
+                                            let lg = lang.get_untracked();
                                             for s in &f.steps {
-                                                step_lines(s, 0, &mut lines);
+                                                step_lines(s, 0, lg, &mut lines);
                                             }
                                             view! {
                                                 <div class="flow-card">
                                                     <strong>{f.name.clone()}</strong>
                                                     <p class="flow-trigger">
-                                                        {format!("رویداد: {} از {} در {}",
-                                                            event_fa(&f.trigger.kind),
-                                                            f.trigger.source_node.clone().unwrap_or_default(),
-                                                            f.trigger.page_route.clone().unwrap_or_default())}
+                                                        {match lg {
+                                                            Lang::Fa => format!("رویداد: {} از {} در {}",
+                                                                event_label(&f.trigger.kind, lg),
+                                                                f.trigger.source_node.clone().unwrap_or_default(),
+                                                                f.trigger.page_route.clone().unwrap_or_default()),
+                                                            Lang::En => format!("Event: {} from {} on {}",
+                                                                event_label(&f.trigger.kind, lg),
+                                                                f.trigger.source_node.clone().unwrap_or_default(),
+                                                                f.trigger.page_route.clone().unwrap_or_default()),
+                                                        }}
                                                     </p>
                                                     {lines.into_iter().map(|l| view! { <p class="flow-step">{l}</p> }).collect_view()}
                                                 </div>
@@ -4554,16 +4857,20 @@ fn App() -> impl IntoView {
                             }.into_any(),
                             2 => view! {
                                 <div class="tables">
-                                    <h3>"جدول‌های داده"</h3>
+                                    <h3>{t("جدول‌های داده", "Data tables")}</h3>
                                     {bundle.with(|b| {
                                         if b.database.tables.is_empty() {
-                                            return view! { <p class="hint">"این پروژه هنوز جدولی ندارد."</p> }.into_any();
+                                            return view! { <p class="hint">{t("این پروژه هنوز جدولی ندارد.", "This project has no table yet.")}</p> }.into_any();
                                         }
                                         b.database.tables.iter().map(|t| {
+                                            let seed_count = t.seed_rows.len();
                                             view! {
                                                 <div class="table-card">
                                                     <strong>{t.name.clone()}</strong>
-                                                    <span class="table-meta">{format!("{} ردیف نمونه", t.seed_rows.len())}</span>
+                                                    <span class="table-meta">{move || match lang.get() {
+                                                        Lang::Fa => format!("{} ردیف نمونه", seed_count),
+                                                        Lang::En => format!("{} sample rows", seed_count),
+                                                    }}</span>
                                                     {t.columns.iter().map(|c| {
                                                         view! { <p class="col-row">{format!("{} : {:?}", c.name, c.col_type)}</p> }
                                                     }).collect_view()}
@@ -4575,23 +4882,23 @@ fn App() -> impl IntoView {
                             }.into_any(),
                             3 => view! {
                                 <div class="code-tab">
-                                    <h3>"خروجی و کد"</h3>
-                                    <p class="hint">"ساخت کد کامل (بک اند Axum و فرانت Leptos) با دستور chida generate روی فایل پروژه اجرا می‌شود. اینجا می‌توانید JSON پروژه و رندر سریع SVG را بگیرید."</p>
+                                    <h3>{t("خروجی و کد", "Output and code")}</h3>
+                                    <p class="hint">{t("ساخت کد کامل (بک‌اند Axum و فرانت‌اند Leptos) با دستور chida generate روی فایل پروژه اجرا می‌شود. در این بخش می‌توانید JSON پروژه و یک رندر سریع SVG را دریافت کنید.", "The full code (Axum backend and Leptos frontend) is built with the chida generate command on the project file. In this section you can download the project JSON and a quick SVG render.")}</p>
                                     <button class="wide" on:click=move |_| {
                                         bundle.with(|b| {
                                             if let Ok(raw) = serde_json::to_string_pretty(&*b) {
                                                 download_text(&format!("{}.chida.json", b.project.id), &raw, "application/json");
                                             }
                                         });
-                                    }>"دانلود JSON کامل پروژه"</button>
+                                    }>{t("دانلود JSON کامل پروژه", "Download the full project JSON")}</button>
                                     <button class="wide" on:click=move |_| {
                                         bundle.with(|b| {
                                             if let Some(page) = b.project.pages.get(page_index.get_untracked()) {
                                                 download_text(&format!("{}.svg", page.id), &page_svg(&b.project, page), "image/svg+xml");
                                             }
                                         });
-                                    }>"دانلود رندر SVG این صفحه"</button>
-                                    <h4>"پیش‌نمایش JSON"</h4>
+                                    }>{t("دانلود رندر SVG این صفحه", "Download an SVG render of this page")}</button>
+                                    <h4>{t("پیش‌نمایش JSON", "JSON preview")}</h4>
                                     <pre class="json-preview">{move || bundle.with(|b| {
                                         let raw = serde_json::to_string_pretty(&b.project).unwrap_or_default();
                                         if raw.chars().count() > 6000 {
@@ -4605,9 +4912,13 @@ fn App() -> impl IntoView {
                             _ => view! {
                                 <div class="design-tab">
                                     {move || match selected_node() {
-                                        None => view! { <p class="hint">"یک عنصر روی بوم یا از فهرست لایه‌ها انتخاب کنید."</p> }.into_any(),
+                                        None => view! { <p class="hint">{t("یک عنصر را روی بوم یا از فهرست لایه‌ها انتخاب کنید.", "Select an element on the canvas or from the layers list.")}</p> }.into_any(),
                                         Some(node) => {
                                             let simple = level.get() == 1;
+                                            // The enclosing tab-body closure
+                                            // subscribes to `lang`, so an
+                                            // untracked read here is fresh.
+                                            let lg = lang.get_untracked();
                                             let text_value = node.text.clone().unwrap_or_default();
                                             let fill_full = node.fill.map(|c| c.to_hex()).unwrap_or_else(|| "#ffffff".to_string());
                                             let fill_hex = fill_full.chars().take(7).collect::<String>();
@@ -4638,6 +4949,15 @@ fn App() -> impl IntoView {
                                             });
                                             let is_button = node.kind == NodeKind::Button;
                                             let is_image = node.kind == NodeKind::Image;
+                                            // The text section's formatting
+                                            // controls only apply to a node
+                                            // that actually carries text;
+                                            // other selections get the text
+                                            // input plus a one-line hint.
+                                            let has_text = matches!(
+                                                node.kind,
+                                                NodeKind::Text | NodeKind::Button | NodeKind::Input | NodeKind::Card
+                                            ) || node.text.as_ref().map(|s| !s.trim().is_empty()).unwrap_or(false);
                                             let link_value = node.props.get("link_page").cloned().unwrap_or_default();
                                             let src_short = node.props.get("src").map(|s| {
                                                 if s.chars().count() > 42 {
@@ -4669,117 +4989,117 @@ fn App() -> impl IntoView {
                                             let inter_entries = interaction_entries(node.props.get("interactions").map(|v| v.as_str()));
                                             view! {
                                                 <div class="fields" class:big=simple>
-                                                    <p class="node-name">{node.name.clone()}<span class="node-kind">{kind_fa(node.kind)}</span></p>
+                                                    <p class="node-name">{node.name.clone()}<span class="node-kind">{kind_label(node.kind, lg)}</span></p>
                                                     {(level.get() == 3).then(|| view! {
                                                         <details class="prop-section" open>
-                                                            <summary>"ترتیب و تراز"</summary>
+                                                            <summary>{tr(lg, "ترتیب و تراز", "Order and alignment")}</summary>
                                                             <div class="align-row">
-                                                                <span>"ترتیب"</span>
-                                                                <button on:click=move |_| front_selection(true)>"جلوترین"</button>
-                                                                <button on:click=move |_| { let id = selected_id.get_untracked(); reorder_selection(id, true); }>"جلو"</button>
-                                                                <button on:click=move |_| { let id = selected_id.get_untracked(); reorder_selection(id, false); }>"عقب"</button>
-                                                                <button on:click=move |_| front_selection(false)>"عقب‌ترین"</button>
+                                                                <span>{tr(lg, "ترتیب", "Order")}</span>
+                                                                <button on:click=move |_| front_selection(true)>{tr(lg, "جلوترین", "Bring to front")}</button>
+                                                                <button on:click=move |_| { let id = selected_id.get_untracked(); reorder_selection(id, true); }>{tr(lg, "جلو", "Bring forward")}</button>
+                                                                <button on:click=move |_| { let id = selected_id.get_untracked(); reorder_selection(id, false); }>{tr(lg, "عقب", "Send backward")}</button>
+                                                                <button on:click=move |_| front_selection(false)>{tr(lg, "عقب‌ترین", "Send to back")}</button>
                                                             </div>
                                                             <div class="align-row">
-                                                                <span>"گروه"</span>
-                                                                <button disabled=move || sel_set.get().len() < 2 on:click=move |_| group_selection()>"گروه‌بندی"</button>
-                                                                <button on:click=move |_| ungroup_selection()>"باز کردن گروه"</button>
-                                                                <button disabled=move || selected_id.get().is_empty() on:click=move |_| make_component()>"ساخت کامپوننت"</button>
+                                                                <span>{tr(lg, "گروه", "Group")}</span>
+                                                                <button disabled=move || sel_set.get().len() < 2 on:click=move |_| group_selection()>{tr(lg, "گروه‌بندی", "Group")}</button>
+                                                                <button on:click=move |_| ungroup_selection()>{tr(lg, "باز کردن گروه", "Ungroup")}</button>
+                                                                <button disabled=move || selected_id.get().is_empty() on:click=move |_| make_component()>{tr(lg, "ساخت کامپوننت", "Make component")}</button>
                                                             </div>
                                                             <div class="align-row">
-                                                                <span>"تراز با صفحه"</span>
-                                                                <button on:click=move |_| align_selection("left")>"چپ"</button>
-                                                                <button on:click=move |_| align_selection("hcenter")>"وسط افقی"</button>
-                                                                <button on:click=move |_| align_selection("right")>"راست"</button>
+                                                                <span>{tr(lg, "تراز با صفحه", "Align to page")}</span>
+                                                                <button on:click=move |_| align_selection("left")>{tr(lg, "چپ", "Left")}</button>
+                                                                <button on:click=move |_| align_selection("hcenter")>{tr(lg, "وسط افقی", "Center horizontally")}</button>
+                                                                <button on:click=move |_| align_selection("right")>{tr(lg, "راست", "Right")}</button>
                                                             </div>
                                                             <div class="align-row">
                                                                 <span></span>
-                                                                <button on:click=move |_| align_selection("top")>"بالا"</button>
-                                                                <button on:click=move |_| align_selection("vmiddle")>"وسط عمودی"</button>
-                                                                <button on:click=move |_| align_selection("bottom")>"پایین"</button>
+                                                                <button on:click=move |_| align_selection("top")>{tr(lg, "بالا", "Top")}</button>
+                                                                <button on:click=move |_| align_selection("vmiddle")>{tr(lg, "وسط عمودی", "Center vertically")}</button>
+                                                                <button on:click=move |_| align_selection("bottom")>{tr(lg, "پایین", "Bottom")}</button>
                                                             </div>
                                                             <div class="align-row">
-                                                                <span>"پخش و تکثیر"</span>
-                                                                <button disabled=move || sel_set.get().len() < 3 on:click=move |_| distribute_selection(true)>"پخش افقی"</button>
-                                                                <button disabled=move || sel_set.get().len() < 3 on:click=move |_| distribute_selection(false)>"پخش عمودی"</button>
-                                                                <button on:click=move |_| duplicate_selection()>"تکثیر"</button>
+                                                                <span>{tr(lg, "پخش و تکثیر", "Distribute and duplicate")}</span>
+                                                                <button disabled=move || sel_set.get().len() < 3 on:click=move |_| distribute_selection(true)>{tr(lg, "پخش افقی", "Distribute horizontally")}</button>
+                                                                <button disabled=move || sel_set.get().len() < 3 on:click=move |_| distribute_selection(false)>{tr(lg, "پخش عمودی", "Distribute vertically")}</button>
+                                                                <button on:click=move |_| duplicate_selection()>{tr(lg, "تکثیر", "Duplicate")}</button>
                                                             </div>
                                                         </details>
                                                     })}
                                                     <details class="prop-section" open>
-                                                        <summary>"چیدمان"</summary>
+                                                        <summary>{tr(lg, "چیدمان", "Layout")}</summary>
                                                         <div class="grid2">
                                                             <label>"X" <input type="number" disabled=parent_layout prop:value=nx.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("x", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.x = v; } }); } /></label>
                                                             <label>"Y" <input type="number" disabled=parent_layout prop:value=ny.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("y", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.y = v; } }); } /></label>
-                                                            <label>"عرض" <input type="number" prop:value=nw.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("w", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.width = v.max(1.0); } }); } /></label>
-                                                            <label>"ارتفاع" <input type="number" prop:value=nh.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("h", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.height = v.max(1.0); } }); } /></label>
+                                                            <label>{tr(lg, "عرض", "Width")} <input type="number" prop:value=nw.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("w", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.width = v.max(1.0); } }); } /></label>
+                                                            <label>{tr(lg, "ارتفاع", "Height")} <input type="number" prop:value=nh.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("h", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.height = v.max(1.0); } }); } /></label>
                                                         </div>
                                                         {(level.get() >= 2).then(|| view! {
                                                             <div class="grid2">
-                                                                <label>"حالت عرض"
+                                                                <label>{tr(lg, "حالت عرض", "Width mode")}
                                                                     <select on:change=move |ev| { let v = event_target_value(&ev); edit_selected("wmode", &|n: &mut Node| { n.width_mode = match v.as_str() { "hug" => AxisSizing::Hug, "fill" => AxisSizing::Fill, _ => AxisSizing::Fixed }; }); }>
-                                                                        <option value="fixed" selected=width_mode == AxisSizing::Fixed>"ثابت"</option>
-                                                                        <option value="hug" selected=width_mode == AxisSizing::Hug>"جمع شدن دور محتوا"</option>
-                                                                        <option value="fill" selected=width_mode == AxisSizing::Fill>"پر کردن"</option>
+                                                                        <option value="fixed" selected=width_mode == AxisSizing::Fixed>{tr(lg, "ثابت", "Fixed")}</option>
+                                                                        <option value="hug" selected=width_mode == AxisSizing::Hug>{tr(lg, "جمع شدن دور محتوا", "Hug content")}</option>
+                                                                        <option value="fill" selected=width_mode == AxisSizing::Fill>{tr(lg, "پر کردن", "Fill")}</option>
                                                                     </select>
                                                                 </label>
-                                                                <label>"حالت ارتفاع"
+                                                                <label>{tr(lg, "حالت ارتفاع", "Height mode")}
                                                                     <select on:change=move |ev| { let v = event_target_value(&ev); edit_selected("hmode", &|n: &mut Node| { n.height_mode = match v.as_str() { "hug" => AxisSizing::Hug, "fill" => AxisSizing::Fill, _ => AxisSizing::Fixed }; }); }>
-                                                                        <option value="fixed" selected=height_mode == AxisSizing::Fixed>"ثابت"</option>
-                                                                        <option value="hug" selected=height_mode == AxisSizing::Hug>"جمع شدن دور محتوا"</option>
-                                                                        <option value="fill" selected=height_mode == AxisSizing::Fill>"پر کردن"</option>
+                                                                        <option value="fixed" selected=height_mode == AxisSizing::Fixed>{tr(lg, "ثابت", "Fixed")}</option>
+                                                                        <option value="hug" selected=height_mode == AxisSizing::Hug>{tr(lg, "جمع شدن دور محتوا", "Hug content")}</option>
+                                                                        <option value="fill" selected=height_mode == AxisSizing::Fill>{tr(lg, "پر کردن", "Fill")}</option>
                                                                     </select>
                                                                 </label>
                                                             </div>
                                                         })}
                                                         {(level.get() >= 2).then(|| view! {
-                                                            <label>"گردی گوشه" <span class="val">{format!("{}", radius as i32)}</span>
+                                                            <label>{tr(lg, "گردی گوشه", "Corner radius")} <span class="val">{format!("{}", radius as i32)}</span>
                                                                 <input type="range" min="0" max="60" prop:value=radius.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("radius", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.corner_radius = v; } }); } />
                                                             </label>
                                                         })}
                                                         {(level.get() == 3).then(|| view! {
-                                                            <label>"شفافیت" <span class="val">{format!("٪{}", opacity_pct as i32)}</span>
+                                                            <label>{tr(lg, "شفافیت", "Opacity")} <span class="val">{match lg { Lang::Fa => format!("٪{}", opacity_pct as i32), Lang::En => format!("{}%", opacity_pct as i32) }}</span>
                                                                 <input type="range" min="0" max="100" prop:value=opacity_pct.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("opacity", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.opacity = (v / 100.0).clamp(0.0, 1.0); } }); } />
                                                             </label>
                                                         })}
                                                         {(is_container && level.get() >= 2).then(|| view! {
                                                             <div class="align-row">
-                                                                <span>"چیدمان خودکار"</span>
-                                                                <button class:on=layout_dir == LayoutDirection::None on:click=move |_| edit_selected("layoutdir", &|n: &mut Node| n.layout_direction = LayoutDirection::None)>"بدون"</button>
-                                                                <button class:on=layout_dir == LayoutDirection::Row on:click=move |_| edit_selected("layoutdir", &|n: &mut Node| n.layout_direction = LayoutDirection::Row)>"افقی"</button>
-                                                                <button class:on=layout_dir == LayoutDirection::Column on:click=move |_| edit_selected("layoutdir", &|n: &mut Node| n.layout_direction = LayoutDirection::Column)>"عمودی"</button>
+                                                                <span>{tr(lg, "چیدمان خودکار", "Auto layout")}</span>
+                                                                <button class:on=layout_dir == LayoutDirection::None on:click=move |_| edit_selected("layoutdir", &|n: &mut Node| n.layout_direction = LayoutDirection::None)>{tr(lg, "بدون", "None")}</button>
+                                                                <button class:on=layout_dir == LayoutDirection::Row on:click=move |_| edit_selected("layoutdir", &|n: &mut Node| n.layout_direction = LayoutDirection::Row)>{tr(lg, "افقی", "Horizontal")}</button>
+                                                                <button class:on=layout_dir == LayoutDirection::Column on:click=move |_| edit_selected("layoutdir", &|n: &mut Node| n.layout_direction = LayoutDirection::Column)>{tr(lg, "عمودی", "Vertical")}</button>
                                                             </div>
                                                         })}
                                                         {(is_container && level.get() >= 2 && layout_dir != LayoutDirection::None).then(|| view! {
                                                             <div class="grid2">
-                                                                <label>"فاصله بین بچه‌ها" <input type="number" prop:value=layout_gap.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("layoutgap", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.layout_gap = v.max(0.0); } }); } /></label>
-                                                                {(level.get() < 3).then(|| view! { <label>"حاشیه داخلی" <input type="number" prop:value=layout_pad.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("layoutpad", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.layout_padding = v.max(0.0); n.layout_padding_top = None; n.layout_padding_right = None; n.layout_padding_bottom = None; n.layout_padding_left = None; } }); } /></label> })}
+                                                                <label>{tr(lg, "فاصله بین بچه‌ها", "Gap between children")} <input type="number" prop:value=layout_gap.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("layoutgap", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.layout_gap = v.max(0.0); } }); } /></label>
+                                                                {(level.get() < 3).then(|| view! { <label>{tr(lg, "حاشیه داخلی", "Padding")} <input type="number" prop:value=layout_pad.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("layoutpad", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.layout_padding = v.max(0.0); n.layout_padding_top = None; n.layout_padding_right = None; n.layout_padding_bottom = None; n.layout_padding_left = None; } }); } /></label> })}
                                                             </div>
                                                             {(level.get() == 3).then(|| view! {
                                                                 <div class="grid2">
-                                                                    <label>"حاشیه بالا" <input type="number" prop:value=pad_top.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("padtop", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.layout_padding_top = Some(v.max(0.0)); } }); } /></label>
-                                                                    <label>"حاشیه پایین" <input type="number" prop:value=pad_bottom.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("padbottom", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.layout_padding_bottom = Some(v.max(0.0)); } }); } /></label>
-                                                                    <label>"حاشیه راست" <input type="number" prop:value=pad_right.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("padright", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.layout_padding_right = Some(v.max(0.0)); } }); } /></label>
-                                                                    <label>"حاشیه چپ" <input type="number" prop:value=pad_left.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("padleft", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.layout_padding_left = Some(v.max(0.0)); } }); } /></label>
+                                                                    <label>{tr(lg, "حاشیه بالا", "Padding top")} <input type="number" prop:value=pad_top.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("padtop", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.layout_padding_top = Some(v.max(0.0)); } }); } /></label>
+                                                                    <label>{tr(lg, "حاشیه پایین", "Padding bottom")} <input type="number" prop:value=pad_bottom.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("padbottom", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.layout_padding_bottom = Some(v.max(0.0)); } }); } /></label>
+                                                                    <label>{tr(lg, "حاشیه راست", "Padding right")} <input type="number" prop:value=pad_right.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("padright", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.layout_padding_right = Some(v.max(0.0)); } }); } /></label>
+                                                                    <label>{tr(lg, "حاشیه چپ", "Padding left")} <input type="number" prop:value=pad_left.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("padleft", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.layout_padding_left = Some(v.max(0.0)); } }); } /></label>
                                                                 </div>
                                                             })}
                                                             <div class="align-row">
-                                                                <span>"تراز"</span>
-                                                                <button class:on=layout_align == LayoutAlign::Start on:click=move |_| edit_selected("layoutalign", &|n: &mut Node| n.layout_align = LayoutAlign::Start)>"شروع"</button>
-                                                                <button class:on=layout_align == LayoutAlign::Center on:click=move |_| edit_selected("layoutalign", &|n: &mut Node| n.layout_align = LayoutAlign::Center)>"وسط"</button>
-                                                                <button class:on=layout_align == LayoutAlign::End on:click=move |_| edit_selected("layoutalign", &|n: &mut Node| n.layout_align = LayoutAlign::End)>"پایان"</button>
-                                                                <button class:on=layout_align == LayoutAlign::Stretch on:click=move |_| edit_selected("layoutalign", &|n: &mut Node| n.layout_align = LayoutAlign::Stretch)>"کشیده"</button>
+                                                                <span>{tr(lg, "تراز", "Alignment")}</span>
+                                                                <button class:on=layout_align == LayoutAlign::Start on:click=move |_| edit_selected("layoutalign", &|n: &mut Node| n.layout_align = LayoutAlign::Start)>{tr(lg, "شروع", "Start")}</button>
+                                                                <button class:on=layout_align == LayoutAlign::Center on:click=move |_| edit_selected("layoutalign", &|n: &mut Node| n.layout_align = LayoutAlign::Center)>{tr(lg, "وسط", "Center")}</button>
+                                                                <button class:on=layout_align == LayoutAlign::End on:click=move |_| edit_selected("layoutalign", &|n: &mut Node| n.layout_align = LayoutAlign::End)>{tr(lg, "پایان", "End")}</button>
+                                                                <button class:on=layout_align == LayoutAlign::Stretch on:click=move |_| edit_selected("layoutalign", &|n: &mut Node| n.layout_align = LayoutAlign::Stretch)>{tr(lg, "کشیده", "Stretch")}</button>
                                                             </div>
                                                             <div class="align-row">
-                                                                <span>"پخش در محور اصلی"</span>
-                                                                <button class:on=layout_justify == LayoutJustify::Start on:click=move |_| edit_selected("layoutjustify", &|n: &mut Node| n.layout_justify = LayoutJustify::Start)>"شروع"</button>
-                                                                <button class:on=layout_justify == LayoutJustify::Center on:click=move |_| edit_selected("layoutjustify", &|n: &mut Node| n.layout_justify = LayoutJustify::Center)>"وسط"</button>
-                                                                <button class:on=layout_justify == LayoutJustify::End on:click=move |_| edit_selected("layoutjustify", &|n: &mut Node| n.layout_justify = LayoutJustify::End)>"پایان"</button>
-                                                                <button class:on=layout_justify == LayoutJustify::SpaceBetween on:click=move |_| edit_selected("layoutjustify", &|n: &mut Node| n.layout_justify = LayoutJustify::SpaceBetween)>"فاصله بین"</button>
+                                                                <span>{tr(lg, "پخش در محور اصلی", "Main-axis distribution")}</span>
+                                                                <button class:on=layout_justify == LayoutJustify::Start on:click=move |_| edit_selected("layoutjustify", &|n: &mut Node| n.layout_justify = LayoutJustify::Start)>{tr(lg, "شروع", "Start")}</button>
+                                                                <button class:on=layout_justify == LayoutJustify::Center on:click=move |_| edit_selected("layoutjustify", &|n: &mut Node| n.layout_justify = LayoutJustify::Center)>{tr(lg, "وسط", "Center")}</button>
+                                                                <button class:on=layout_justify == LayoutJustify::End on:click=move |_| edit_selected("layoutjustify", &|n: &mut Node| n.layout_justify = LayoutJustify::End)>{tr(lg, "پایان", "End")}</button>
+                                                                <button class:on=layout_justify == LayoutJustify::SpaceBetween on:click=move |_| edit_selected("layoutjustify", &|n: &mut Node| n.layout_justify = LayoutJustify::SpaceBetween)>{tr(lg, "فاصله بین", "Space between")}</button>
                                                             </div>
                                                             {(layout_dir == LayoutDirection::Row).then(|| view! {
-                                                                <label class="check">"رفتن به ردیف بعد (Wrap)"
-                                                                    <button class="toggle" class:on=layout_wrap on:click=move |_| edit_selected("layoutwrap", &|n: &mut Node| n.layout_wrap = !n.layout_wrap)>{if layout_wrap { "روشن" } else { "خاموش" }}</button>
+                                                                <label class="check">{tr(lg, "رفتن به ردیف بعد (Wrap)", "Wrap to the next row")}
+                                                                    <button class="toggle" class:on=layout_wrap on:click=move |_| edit_selected("layoutwrap", &|n: &mut Node| n.layout_wrap = !n.layout_wrap)>{if layout_wrap { tr(lg, "روشن", "On") } else { tr(lg, "خاموش", "Off") }}</button>
                                                                 </label>
                                                             })}
                                                             <div class="align9">
@@ -4794,7 +5114,7 @@ fn App() -> impl IntoView {
                                                                                 };
                                                                                 let is_on = layout_justify == j && layout_align == a;
                                                                                 view! {
-                                                                                    <button class="align9-cell" class:on=is_on title="تراز بچه ها" on:click=move |_| edit_selected("layout9", &|n: &mut Node| { n.layout_justify = j; n.layout_align = a; })>"•"</button>
+                                                                                    <button class="align9-cell" class:on=is_on title=tr(lg, "تراز بچه‌ها", "Align children") aria-label=tr(lg, "تراز بچه‌ها", "Align children") on:click=move |_| edit_selected("layout9", &|n: &mut Node| { n.layout_justify = j; n.layout_align = a; })>"•"</button>
                                                                                 }
                                                                             }).collect_view()}
                                                                         </div>
@@ -4803,34 +5123,38 @@ fn App() -> impl IntoView {
                                                             </div>
                                                         })}
                                                         {parent_layout.then(|| view! {
-                                                            <p class="hint lock-note">"این عنصر داخل یک چیدمان خودکار است؛ جای آن خودکار حساب می‌شود و با درگ جابه‌جا نمی‌شود."</p>
+                                                            <p class="hint lock-note">{tr(lg, "این عنصر داخل یک چیدمان خودکار است؛ جای آن خودکار حساب می‌شود و با درگ جابه‌جا نمی‌شود.", "This element is inside an auto layout. Its position is calculated automatically and it cannot be moved by dragging.")}</p>
                                                         })}
                                                     </details>
                                                     <details class="prop-section" open>
-                                                        <summary>"متن"</summary>
+                                                        <summary>{tr(lg, "متن", "Text")}</summary>
                                                         <label class="full"><input type="text" prop:value=text_value on:input=move |ev| { let v = event_target_value(&ev); edit_selected("text", &|n: &mut Node| n.text = Some(v.clone())); } /></label>
+                                                        {(!has_text).then(|| view! {
+                                                            <p class="hint">{tr(lg, "متنی برای این عنصر بنویسید تا اندازه و سبک آن را تنظیم کنید.", "Write text for this element to adjust its size and style.")}</p>
+                                                        })}
+                                                        {(has_text).then(|| view! {
                                                         <div class="grid2">
-                                                            <label>"اندازه فونت" <input type="number" prop:value=fs.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("fontsize", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.font_size = v.max(6.0); } }); } /></label>
+                                                            <label>{tr(lg, "اندازه فونت", "Font size")} <input type="number" prop:value=fs.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("fontsize", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.font_size = v.max(6.0); } }); } /></label>
                                                             {(level.get() >= 2).then(|| view! {
-                                                                <label>"رنگ متن"
+                                                                <label>{tr(lg, "رنگ متن", "Text color")}
                                                                     <input type="color" prop:value=text_hex on:input=move |ev| { let v = event_target_value(&ev); edit_selected("textcolor", &|n: &mut Node| { if let Ok(c) = Color::from_hex(&v) { n.text_color = Some(c); } }); } />
                                                                 </label>
                                                             })}
                                                         </div>
                                                         {(level.get() >= 2).then(|| view! {
                                                             <div class="align-row">
-                                                                <span>"وزن"</span>
-                                                                {[(400u16, "عادی"), (500, "متوسط"), (700, "درشت")].into_iter().map(|(w, label)| {
+                                                                <span>{tr(lg, "وزن", "Weight")}</span>
+                                                                {[(400u16, "عادی", "Regular"), (500, "متوسط", "Medium"), (700, "درشت", "Bold")].into_iter().map(|(w, fa, en)| {
                                                                     let is_on = weight == w;
                                                                     view! {
-                                                                        <button class:on=is_on on:click=move |_| edit_selected("weight", &|n: &mut Node| { n.font_weight = w; n.bold = w >= 600; })>{label}</button>
+                                                                        <button class:on=is_on on:click=move |_| edit_selected("weight", &|n: &mut Node| { n.font_weight = w; n.bold = w >= 600; })>{tr(lg, fa, en)}</button>
                                                                     }
                                                                 }).collect_view()}
                                                             </div>
                                                             <div class="align-row">
-                                                                <span>"تراز"</span>
+                                                                <span>{tr(lg, "تراز", "Alignment")}</span>
                                                                 {["right", "center", "left"].into_iter().map(|a| {
-                                                                    let label = match a { "right" => "راست", "center" => "وسط", _ => "چپ" };
+                                                                    let label = match (a, lg) { ("right", Lang::Fa) => "راست", ("right", Lang::En) => "Right", ("center", Lang::Fa) => "وسط", ("center", Lang::En) => "Center", (_, Lang::Fa) => "چپ", (_, Lang::En) => "Left" };
                                                                     let is_on = align == a;
                                                                     view! {
                                                                         <button class:on=is_on on:click=move |_| edit_selected("align", &|n: &mut Node| { n.props.insert("align".into(), a.to_string()); })>{label}</button>
@@ -4840,42 +5164,43 @@ fn App() -> impl IntoView {
                                                         })}
                                                         {(level.get() == 3).then(|| view! {
                                                             <div class="grid2">
-                                                                <label>"ارتفاع خط" <input type="number" step="0.05" prop:value=lh_val.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("lineheight", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.line_height = v.clamp(0.8, 3.0); } }); } /></label>
-                                                                <label>"فاصله حروف" <input type="number" prop:value=ls_val.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("letterspacing", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.letter_spacing = v; } }); } /></label>
+                                                                <label>{tr(lg, "ارتفاع خط", "Line height")} <input type="number" step="0.05" prop:value=lh_val.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("lineheight", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.line_height = v.clamp(0.8, 3.0); } }); } /></label>
+                                                                <label>{tr(lg, "فاصله حروف", "Letter spacing")} <input type="number" prop:value=ls_val.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("letterspacing", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.letter_spacing = v; } }); } /></label>
                                                             </div>
+                                                        })}
                                                         })}
                                                     </details>
                                                     <details class="prop-section" open>
-                                                        <summary>"پس‌زمینه"</summary>
+                                                        <summary>{tr(lg, "پس‌زمینه", "Background")}</summary>
                                                         {(level.get() >= 2).then(|| view! {
                                                             <div class="align-row">
-                                                                <span>"نوع"</span>
-                                                                <button class:on=!has_grad on:click=move |_| edit_selected("fillmode", &|n: &mut Node| n.fill_gradient = None)>"یکدست"</button>
+                                                                <span>{tr(lg, "نوع", "Type")}</span>
+                                                                <button class:on=!has_grad on:click=move |_| edit_selected("fillmode", &|n: &mut Node| n.fill_gradient = None)>{tr(lg, "یکدست", "Solid")}</button>
                                                                 <button class:on=has_grad on:click=move |_| edit_selected("fillmode", &|n: &mut Node| {
                                                                     let base = n.fill.unwrap_or(Color::rgb(239, 64, 86));
                                                                     n.fill_gradient = Some(Gradient::new(base, shade(base, 1.4), 90.0));
-                                                                })>"گرادیان"</button>
+                                                                })>{tr(lg, "گرادیان", "Gradient")}</button>
                                                             </div>
                                                         })}
                                                         {(!has_grad).then(|| view! {
                                                             <div class="color-row">
-                                                                <span>"رنگ"</span>
+                                                                <span>{tr(lg, "رنگ", "Color")}</span>
                                                                 <input type="color" prop:value=fill_hex.clone() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("fill", &|n: &mut Node| { if let Ok(c) = Color::from_hex(&v) { n.fill = Some(c); } }); } />
                                                                 <input class="hex" type="text" prop:value=fill_hex on:change=move |ev| { let v = event_target_value(&ev); edit_selected("fill", &|n: &mut Node| { if let Ok(c) = Color::from_hex(&v) { n.fill = Some(c); } }); } />
                                                             </div>
                                                         })}
                                                         {(has_grad && level.get() >= 2).then(|| view! {
                                                             <div class="color-row">
-                                                                <span>"از"</span>
+                                                                <span>{tr(lg, "از", "From")}</span>
                                                                 <input type="color" prop:value=g_from on:input=move |ev| { let v = event_target_value(&ev); edit_selected("gradfrom", &|n: &mut Node| { if let (Some(g), Ok(c)) = (&mut n.fill_gradient, Color::from_hex(&v)) { g.from = c; let mut stops = g.stops(); if let Some(first) = stops.first_mut() { first.color = c; } g.set_stops(stops); } }); } />
-                                                                <span>"به"</span>
+                                                                <span>{tr(lg, "به", "To")}</span>
                                                                 <input type="color" prop:value=g_to on:input=move |ev| { let v = event_target_value(&ev); edit_selected("gradto", &|n: &mut Node| { if let (Some(g), Ok(c)) = (&mut n.fill_gradient, Color::from_hex(&v)) { g.to = c; let mut stops = g.stops(); if let Some(last) = stops.last_mut() { last.color = c; } g.set_stops(stops); } }); } />
                                                             </div>
                                                             <div class="grad-editor">
                                                                 <div
                                                                     class="grad-bar"
                                                                     style=format!("background:{};", grad_css)
-                                                                    title="برای افزودن توقف تازه، روی نوار کلیک کنید"
+                                                                    title=tr(lg, "برای افزودن یک توقف تازه، روی نوار کلیک کنید", "Click the bar to add a new stop")
                                                                     on:click=move |ev: leptos::ev::MouseEvent| {
                                                                         let w = ev.target().and_then(|t| t.dyn_into::<web_sys::HtmlElement>().ok()).map(|el| el.offset_width() as f32).unwrap_or(200.0).max(1.0);
                                                                         let off = ((ev.offset_x() as f32) / w).clamp(0.0, 1.0);
@@ -4896,7 +5221,8 @@ fn App() -> impl IntoView {
                                                                                 class="grad-stop"
                                                                                 class:sel=move || grad_stop_sel.get() == i
                                                                                 style=format!("left:{}%;background:{};", stop.offset * 100.0, hex)
-                                                                                title="توقف گرادیان"
+                                                                                title=tr(lg, "توقف گرادیان", "Gradient stop")
+                                                                                aria-label=tr(lg, "توقف گرادیان", "Gradient stop")
                                                                                 on:click=move |ev: leptos::ev::MouseEvent| { ev.stop_propagation(); grad_stop_sel.set(i); }
                                                                             ></button>
                                                                         }
@@ -4915,24 +5241,24 @@ fn App() -> impl IntoView {
                                                                     view! {
                                                                         <div class="grad-stop-ctrl">
                                                                             <div class="color-row">
-                                                                                <span>"رنگ توقف"</span>
+                                                                                <span>{tr(lg, "رنگ توقف", "Stop color")}</span>
                                                                                 <input type="color" prop:value=hex on:input=move |ev| { let v = event_target_value(&ev); edit_selected("gradstopcolor", &|n: &mut Node| { if let (Some(g), Ok(c)) = (&mut n.fill_gradient, Color::from_hex(&v)) { let mut stops = g.stops(); if let Some(st) = stops.get_mut(idx) { st.color = c; } g.set_stops(stops); } }); } />
                                                                             </div>
-                                                                            <label>"جای توقف" <span class="val">{format!("٪{}", off_pct as i32)}</span>
+                                                                            <label>{tr(lg, "جای توقف", "Stop position")} <span class="val">{match lg { Lang::Fa => format!("٪{}", off_pct as i32), Lang::En => format!("{}%", off_pct as i32) }}</span>
                                                                                 <input type="range" min="0" max="100" prop:value=off_pct.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("gradstopoff", &|n: &mut Node| { if let (Some(g), Ok(v)) = (&mut n.fill_gradient, v.parse::<f32>()) { let mut stops = g.stops(); if let Some(st) = stops.get_mut(idx) { st.offset = (v / 100.0).clamp(0.0, 1.0); } g.set_stops(stops); } }); } />
                                                                             </label>
-                                                                            <button class="mini danger" disabled=!can_del on:click=move |_| edit_selected("gradstopdel", &|n: &mut Node| { if let Some(g) = &mut n.fill_gradient { let mut stops = g.stops(); if stops.len() > 2 && idx < stops.len() { stops.remove(idx); } g.set_stops(stops); } })>"حذف توقف"</button>
+                                                                            <button class="mini danger" disabled=!can_del on:click=move |_| edit_selected("gradstopdel", &|n: &mut Node| { if let Some(g) = &mut n.fill_gradient { let mut stops = g.stops(); if stops.len() > 2 && idx < stops.len() { stops.remove(idx); } g.set_stops(stops); } })>{tr(lg, "حذف توقف", "Remove stop")}</button>
                                                                         </div>
                                                                     }.into_any()
                                                                 }}
                                                             </div>
-                                                            <label>"زاویه" <span class="val">{format!("{} درجه", g_angle as i32)}</span>
+                                                            <label>{tr(lg, "زاویه", "Angle")} <span class="val">{match lg { Lang::Fa => format!("{} درجه", g_angle as i32), Lang::En => format!("{} degrees", g_angle as i32) }}</span>
                                                                 <input type="range" min="0" max="360" prop:value=g_angle.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("gradangle", &|n: &mut Node| { if let (Some(g), Ok(v)) = (&mut n.fill_gradient, v.parse::<f32>()) { g.angle = v; } }); } />
                                                             </label>
                                                         })}
                                                         {(level.get() >= 2).then(|| view! {
                                                             <div class="color-row">
-                                                                <span>"خط دور"</span>
+                                                                <span>{tr(lg, "خط دور", "Stroke")}</span>
                                                                 <input type="color" prop:value=stroke_hex on:input=move |ev| { let v = event_target_value(&ev); edit_selected("stroke", &|n: &mut Node| { if let Ok(c) = Color::from_hex(&v) { n.stroke = Some(c); if n.stroke_width <= 0.0 { n.stroke_width = 1.0; } } }); } />
                                                                 <input class="hex small" type="number" prop:value=sw.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("strokew", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.stroke_width = v.max(0.0); } }); } />
                                                             </div>
@@ -4940,11 +5266,11 @@ fn App() -> impl IntoView {
                                                     </details>
                                                     {(level.get() == 3).then(|| view! {
                                                         <details class="prop-section" open>
-                                                            <summary>"سایه و محو"</summary>
-                                                            <label class="check">"سایه"
+                                                            <summary>{tr(lg, "سایه و محو", "Shadow and blur")}</summary>
+                                                            <label class="check">{tr(lg, "سایه", "Shadow")}
                                                                 <button class="toggle" class:on=has_shadow on:click=move |_| edit_selected("shadowtoggle", &|n: &mut Node| {
                                                                     if n.shadows.is_empty() { n.shadows = vec![Shadow::soft()]; } else { n.shadows.clear(); }
-                                                                })>{if has_shadow { "روشن" } else { "خاموش" }}</button>
+                                                                })>{if has_shadow { tr(lg, "روشن", "On") } else { tr(lg, "خاموش", "Off") }}</button>
                                                             </label>
                                                             {shadows_list.iter().enumerate().map(|(i, sh)| {
                                                                 let sh_col = sh.color.to_hex().chars().take(7).collect::<String>();
@@ -4952,44 +5278,44 @@ fn App() -> impl IntoView {
                                                                 view! {
                                                                     <div class="shadow-row">
                                                                         <div class="align-row">
-                                                                            <span>{format!("سایه {}", i + 1)}</span>
-                                                                            <button class="toggle" class:on=sen on:click=move |_| edit_selected("shadowon", &|n: &mut Node| { if let Some(s) = n.shadows.get_mut(i) { s.enabled = !s.enabled; } })>{if sen { "روشن" } else { "خاموش" }}</button>
-                                                                            <button class="mini danger" on:click=move |_| edit_selected("shadowdel", &|n: &mut Node| { if i < n.shadows.len() { n.shadows.remove(i); } })>"حذف"</button>
+                                                                            <span>{match lg { Lang::Fa => format!("سایه {}", i + 1), Lang::En => format!("Shadow {}", i + 1) }}</span>
+                                                                            <button class="toggle" class:on=sen on:click=move |_| edit_selected("shadowon", &|n: &mut Node| { if let Some(s) = n.shadows.get_mut(i) { s.enabled = !s.enabled; } })>{if sen { tr(lg, "روشن", "On") } else { tr(lg, "خاموش", "Off") }}</button>
+                                                                            <button class="mini danger" on:click=move |_| edit_selected("shadowdel", &|n: &mut Node| { if i < n.shadows.len() { n.shadows.remove(i); } })>{tr(lg, "حذف", "Delete")}</button>
                                                                         </div>
-                                                                        <label>"افست افقی" <span class="val">{format!("{}", sx as i32)}</span>
+                                                                        <label>{tr(lg, "افست افقی", "Horizontal offset")} <span class="val">{format!("{}", sx as i32)}</span>
                                                                             <input type="range" min="-40" max="40" prop:value=sx.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("shadowx", &|n: &mut Node| { if let (Some(s), Ok(v)) = (n.shadows.get_mut(i), v.parse::<f32>()) { s.x = v; } }); } />
                                                                         </label>
-                                                                        <label>"افست عمودی" <span class="val">{format!("{}", sy as i32)}</span>
+                                                                        <label>{tr(lg, "افست عمودی", "Vertical offset")} <span class="val">{format!("{}", sy as i32)}</span>
                                                                             <input type="range" min="-40" max="40" prop:value=sy.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("shadowy", &|n: &mut Node| { if let (Some(s), Ok(v)) = (n.shadows.get_mut(i), v.parse::<f32>()) { s.y = v; } }); } />
                                                                         </label>
-                                                                        <label>"محو" <span class="val">{format!("{}", sblur as i32)}</span>
+                                                                        <label>{tr(lg, "محو", "Blur")} <span class="val">{format!("{}", sblur as i32)}</span>
                                                                             <input type="range" min="0" max="80" prop:value=sblur.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("shadowblur", &|n: &mut Node| { if let (Some(s), Ok(v)) = (n.shadows.get_mut(i), v.parse::<f32>()) { s.blur = v; } }); } />
                                                                         </label>
                                                                         <div class="color-row">
-                                                                            <span>"رنگ"</span>
+                                                                            <span>{tr(lg, "رنگ", "Color")}</span>
                                                                             <input type="color" prop:value=sh_col on:input=move |ev| { let v = event_target_value(&ev); edit_selected("shadowcolor", &|n: &mut Node| { if let (Some(s), Ok(c)) = (n.shadows.get_mut(i), Color::from_hex(&v)) { s.color = c; } }); } />
                                                                         </div>
-                                                                        <label>"شفافیت سایه" <span class="val">{format!("٪{}", sop as i32)}</span>
+                                                                        <label>{tr(lg, "شفافیت سایه", "Shadow opacity")} <span class="val">{match lg { Lang::Fa => format!("٪{}", sop as i32), Lang::En => format!("{}%", sop as i32) }}</span>
                                                                             <input type="range" min="0" max="100" prop:value=sop.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("shadowop", &|n: &mut Node| { if let (Some(s), Ok(v)) = (n.shadows.get_mut(i), v.parse::<f32>()) { s.opacity = (v / 100.0).clamp(0.0, 1.0); } }); } />
                                                                         </label>
                                                                     </div>
                                                                 }
                                                             }).collect_view()}
                                                             {(has_shadow).then(|| view! {
-                                                                <button class="wide-action" on:click=move |_| edit_selected("shadowadd", &|n: &mut Node| { let mut sh = Shadow::soft(); sh.y += 10.0 + (n.shadows.len() as f32) * 6.0; n.shadows.push(sh); })>"افزودن سایه"</button>
+                                                                <button class="wide-action" on:click=move |_| edit_selected("shadowadd", &|n: &mut Node| { let mut sh = Shadow::soft(); sh.y += 10.0 + (n.shadows.len() as f32) * 6.0; n.shadows.push(sh); })>{tr(lg, "افزودن سایه", "Add a shadow")}</button>
                                                             })}
-                                                            <label>"محو شدن خود عنصر" <span class="val">{format!("{}", blur_val as i32)}</span>
+                                                            <label>{tr(lg, "محو شدن خود عنصر", "Blur of the element itself")} <span class="val">{format!("{}", blur_val as i32)}</span>
                                                                 <input type="range" min="0" max="20" prop:value=blur_val.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("blur", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.blur_radius = v.max(0.0); } }); } />
                                                             </label>
-                                                            <label>"محو شدن پس زمینه" <span class="val">{format!("{}", bg_blur_val as i32)}</span>
+                                                            <label>{tr(lg, "محو شدن پس‌زمینه", "Blur of the background")} <span class="val">{format!("{}", bg_blur_val as i32)}</span>
                                                                 <input type="range" min="0" max="20" prop:value=bg_blur_val.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("bgblur", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { n.background_blur = v.max(0.0); } }); } />
                                                             </label>
-                                                            <p class="hint">"محو شدن در پیش نمایش و خروجی وب دیده می شود؛ رندر PNG سی پی یویی شکل را بدون محو می کشد."</p>
+                                                            <p class="hint">{tr(lg, "محو شدن در پیش‌نمایش و خروجی وب دیده می‌شود؛ رندر PNG شکل را بدون محو ترسیم می‌کند.", "Blur is visible in the preview and in the web output. The PNG render draws the shape without blur.")}</p>
                                                         </details>
                                                     })}
                                                     {(is_button && level.get() >= 2).then(|| view! {
                                                         <details class="prop-section" open>
-                                                            <summary>"پیوند"</summary>
+                                                            <summary>{tr(lg, "پیوند", "Link")}</summary>
                                                             <label class="full">
                                                                 <select on:change=move |ev| {
                                                                     let v = event_target_value(&ev);
@@ -5001,7 +5327,7 @@ fn App() -> impl IntoView {
                                                                         }
                                                                     });
                                                                 }>
-                                                                    <option value="" selected=link_value.is_empty()>"بدون پیوند"</option>
+                                                                    <option value="" selected=link_value.is_empty()>{tr(lg, "بدون پیوند", "No link")}</option>
                                                                     {bundle.with(|b| b.project.pages.iter().map(|pg| {
                                                                         let r = pg.route.clone();
                                                                         let sel = link_value == r;
@@ -5009,23 +5335,23 @@ fn App() -> impl IntoView {
                                                                     }).collect_view())}
                                                                 </select>
                                                             </label>
-                                                            <p class="hint">"در پیش‌نمایش، کلیک روی این دکمه بازدیدکننده را به صفحه انتخاب شده می‌برد."</p>
+                                                            <p class="hint">{tr(lg, "در پیش‌نمایش، کلیک روی این دکمه بازدیدکننده را به صفحه انتخاب‌شده می‌برد.", "In the preview, clicking this button takes the visitor to the selected page.")}</p>
                                                         </details>
                                                     })}
                                                     {is_image.then(|| view! {
                                                         <details class="prop-section" open>
-                                                            <summary>"عکس"</summary>
+                                                            <summary>{tr(lg, "عکس", "Image")}</summary>
                                                             {src_short.clone().map(|s| view! { <p class="src-line">{s}</p> })}
-                                                            <button class="wide-action" on:click=move |_| trigger_upload(Some(selected_id.get_untracked()))>"تعویض عکس"</button>
-                                                            <p class="hint">"عکس آپلودی فقط در نسخه ذخیره شده همین مرورگر می‌ماند و وارد فایل پروژه صادرشده نمی‌شود."</p>
+                                                            <button class="wide-action" on:click=move |_| trigger_upload(Some(selected_id.get_untracked()))>{tr(lg, "تعویض عکس", "Replace the image")}</button>
+                                                            <p class="hint">{tr(lg, "عکس بارگذاری‌شده فقط در نسخه ذخیره‌شده همین مرورگر می‌ماند و وارد فایل پروژه صادرشده نمی‌شود.", "An uploaded image stays only in this browser's saved copy and does not enter the exported project file.")}</p>
                                                         </details>
                                                     })}
                                                     {(is_path_node).then(|| { let nid_cls = node_id_sel.clone(); let nid_clk = node_id_sel.clone(); view! {
                                                         <details class="prop-section" open>
-                                                            <summary>"مسیر و نقطه ها"</summary>
-                                                            <p class="hint">{format!("{} نقطه در این مسیر هست.", point_count)}</p>
+                                                            <summary>{tr(lg, "مسیر و نقطه‌ها", "Path and points")}</summary>
+                                                            <p class="hint">{match lg { Lang::Fa => format!("{} نقطه در این مسیر هست.", point_count), Lang::En => format!("This path has {} points.", point_count) }}</p>
                                                             <div class="align-row">
-                                                                <span>"نقطه ها"</span>
+                                                                <span>{tr(lg, "نقطه‌ها", "Points")}</span>
                                                                 <button class:on=move || path_edit_id.get() == nid_cls on:click=move |_| {
                                                                     if path_edit_id.get_untracked() == nid_clk {
                                                                         path_edit_id.set(String::new());
@@ -5033,17 +5359,17 @@ fn App() -> impl IntoView {
                                                                         path_edit_id.set(nid_clk.clone());
                                                                     }
                                                                     path_point_sel.set(None);
-                                                                }>"ویرایش نقطه‌ها"</button>
+                                                                }>{tr(lg, "ویرایش نقطه‌ها", "Edit points")}</button>
                                                                 {(!path_closed).then(|| view! {
-                                                                    <button on:click=move |_| edit_selected("pathclose", &|n: &mut Node| n.path_closed = true)>"بستن مسیر"</button>
+                                                                    <button on:click=move |_| edit_selected("pathclose", &|n: &mut Node| n.path_closed = true)>{tr(lg, "بستن مسیر", "Close the path")}</button>
                                                                 })}
                                                             </div>
                                                             {(node.kind == NodeKind::Path).then(|| view! {
                                                                 <div class="grid2">
-                                                                    <label>"تعداد ضلع چندضلعی" <input type="number" min="3" max="10" prop:value=poly_sides.to_string() on:change=move |ev| { let v = event_target_value(&ev); edit_selected("polysides", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { let sides = (v as usize).clamp(3, 10); let mut poly = Node::polygon(n.id.clone(), n.name.clone(), n.x, n.y, n.width, n.height, sides, n.fill.unwrap_or(Color::rgb(20, 24, 24))); poly.fill = n.fill; poly.stroke = n.stroke; poly.stroke_width = n.stroke_width; poly.props = n.props.clone(); poly.props.remove("points"); poly.props.remove("inner_ratio"); poly.props.insert("sides".into(), sides.to_string()); poly.props.insert("shape".into(), "polygon".into()); let keep_props = poly.props.clone(); *n = poly; n.props = keep_props; } }); } /></label>
-                                                                    <label>"تعداد پره ستاره" <input type="number" min="3" max="12" prop:value=star_points.to_string() on:change=move |ev| { let v = event_target_value(&ev); edit_selected("starpoints", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { let pts = (v as usize).clamp(3, 12); let ratio: f32 = n.props.get("inner_ratio").or_else(|| n.props.get("star_ratio")).and_then(|r| r.parse().ok()).unwrap_or(0.5); let mut star = Node::star(n.id.clone(), n.name.clone(), n.x, n.y, n.width, n.height, pts, ratio, n.fill.unwrap_or(Color::rgb(20, 24, 24))); star.fill = n.fill; star.stroke = n.stroke; star.stroke_width = n.stroke_width; star.props = n.props.clone(); star.props.remove("sides"); star.props.insert("points".into(), pts.to_string()); star.props.insert("shape".into(), "star".into()); let keep_props = star.props.clone(); *n = star; n.props = keep_props; } }); } /></label>
+                                                                    <label>{tr(lg, "تعداد ضلع چندضلعی", "Polygon side count")} <input type="number" min="3" max="10" prop:value=poly_sides.to_string() on:change=move |ev| { let v = event_target_value(&ev); edit_selected("polysides", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { let sides = (v as usize).clamp(3, 10); let mut poly = Node::polygon(n.id.clone(), n.name.clone(), n.x, n.y, n.width, n.height, sides, n.fill.unwrap_or(Color::rgb(20, 24, 24))); poly.fill = n.fill; poly.stroke = n.stroke; poly.stroke_width = n.stroke_width; poly.props = n.props.clone(); poly.props.remove("points"); poly.props.remove("inner_ratio"); poly.props.insert("sides".into(), sides.to_string()); poly.props.insert("shape".into(), "polygon".into()); let keep_props = poly.props.clone(); *n = poly; n.props = keep_props; } }); } /></label>
+                                                                    <label>{tr(lg, "تعداد پره ستاره", "Star point count")} <input type="number" min="3" max="12" prop:value=star_points.to_string() on:change=move |ev| { let v = event_target_value(&ev); edit_selected("starpoints", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { let pts = (v as usize).clamp(3, 12); let ratio: f32 = n.props.get("inner_ratio").or_else(|| n.props.get("star_ratio")).and_then(|r| r.parse().ok()).unwrap_or(0.5); let mut star = Node::star(n.id.clone(), n.name.clone(), n.x, n.y, n.width, n.height, pts, ratio, n.fill.unwrap_or(Color::rgb(20, 24, 24))); star.fill = n.fill; star.stroke = n.stroke; star.stroke_width = n.stroke_width; star.props = n.props.clone(); star.props.remove("sides"); star.props.insert("points".into(), pts.to_string()); star.props.insert("shape".into(), "star".into()); let keep_props = star.props.clone(); *n = star; n.props = keep_props; } }); } /></label>
                                                                 </div>
-                                                                <label>"نسبت پره داخلی ستاره" <span class="val">{format!("٪{}", star_ratio_pct as i32)}</span>
+                                                                <label>{tr(lg, "نسبت پره داخلی ستاره", "Inner star point ratio")} <span class="val">{match lg { Lang::Fa => format!("٪{}", star_ratio_pct as i32), Lang::En => format!("{}%", star_ratio_pct as i32) }}</span>
                                                                     <input type="range" min="15" max="90" prop:value=star_ratio_pct.to_string() on:input=move |ev| { let v = event_target_value(&ev); edit_selected("starratio", &|n: &mut Node| { if let Ok(v) = v.parse::<f32>() { let ratio = (v / 100.0).clamp(0.1, 0.95); let pts: usize = n.props.get("points").or_else(|| n.props.get("star_points")).and_then(|r| r.parse().ok()).unwrap_or(5); let mut star = Node::star(n.id.clone(), n.name.clone(), n.x, n.y, n.width, n.height, pts, ratio, n.fill.unwrap_or(Color::rgb(20, 24, 24))); star.fill = n.fill; star.stroke = n.stroke; star.stroke_width = n.stroke_width; star.props = n.props.clone(); star.props.insert("points".into(), pts.to_string()); star.props.insert("inner_ratio".into(), ratio.to_string()); star.props.insert("shape".into(), "star".into()); let keep_props = star.props.clone(); *n = star; n.props = keep_props; } }); } />
                                                                 </label>
                                                             })}
@@ -5053,46 +5379,49 @@ fn App() -> impl IntoView {
                                                         let key_edit = key.clone();
                                                         view! {
                                                             <details class="prop-section" open>
-                                                                <summary>"کامپوننت"</summary>
-                                                                <p class="hint">"این عنصر یک نمونه از نسخه اصلی است. متن و رنگی که اینجا عوض کنید فقط روی همین نمونه می نشیند."</p>
+                                                                <summary>{tr(lg, "کامپوننت", "Component")}</summary>
+                                                                <p class="hint">{tr(lg, "این عنصر یک نمونه از نسخه اصلی است. متن و رنگی که در این بخش تغییر دهید فقط روی همین نمونه اعمال می‌شود.", "This element is an instance of the master. Text and color changed here apply only to this instance.")}</p>
                                                                 <div class="align-row">
-                                                                    <button on:click=move |_| open_master(key_edit.clone())>"ویرایش اصلی"</button>
-                                                                    <button on:click=move |_| detach_instance()>"جدا کردن"</button>
+                                                                    <button on:click=move |_| open_master(key_edit.clone())>{tr(lg, "ویرایش اصلی", "Edit master")}</button>
+                                                                    <button on:click=move |_| detach_instance()>{tr(lg, "جدا کردن", "Detach")}</button>
                                                                 </div>
                                                             </details>
                                                         }
                                                     })}
                                                     {(level.get() == 3).then(|| view! {
                                                         <details class="prop-section" open>
-                                                            <summary>"تعامل‌ها"</summary>
+                                                            <summary>{tr(lg, "تعامل‌ها", "Interactions")}</summary>
                                                             {inter_entries.iter().enumerate().map(|(i, (trigger, kind, target))| {
-                                                                let label = format!("{}، {}، {}", if trigger == "hover" { "هاور" } else { "کلیک" }, if kind == "url" { "باز کردن پیوند" } else { "رفتن به صفحه" }, target);
+                                                                let label = match lg {
+                                                                    Lang::Fa => format!("{}، {}، {}", if trigger == "hover" { "هاور" } else { "کلیک" }, if kind == "url" { "باز کردن پیوند" } else { "رفتن به صفحه" }, target),
+                                                                    Lang::En => format!("{}, {}, {}", if trigger == "hover" { "Hover" } else { "Click" }, if kind == "url" { "Open link" } else { "Go to page" }, target),
+                                                                };
                                                                 view! {
                                                                     <div class="inter-row">
                                                                         <span>{label}</span>
-                                                                        <button class="mini danger" on:click=move |_| edit_selected("interdel", &|n: &mut Node| { let mut entries = interaction_entries(n.props.get("interactions").map(|v| v.as_str())); if i < entries.len() { entries.remove(i); } if entries.is_empty() { n.props.remove("interactions"); } else { n.props.insert("interactions".into(), encode_interactions(&entries)); } })>"حذف"</button>
+                                                                        <button class="mini danger" on:click=move |_| edit_selected("interdel", &|n: &mut Node| { let mut entries = interaction_entries(n.props.get("interactions").map(|v| v.as_str())); if i < entries.len() { entries.remove(i); } if entries.is_empty() { n.props.remove("interactions"); } else { n.props.insert("interactions".into(), encode_interactions(&entries)); } })>{tr(lg, "حذف", "Delete")}</button>
                                                                     </div>
                                                                 }
                                                             }).collect_view()}
                                                             <div class="grid2">
-                                                                <label>"رویداد"
+                                                                <label>{tr(lg, "رویداد", "Event")}
                                                                     <select on:change=move |ev| inter_trigger.set(event_target_value(&ev))>
-                                                                        <option value="click">"کلیک"</option>
-                                                                        <option value="hover">"هاور"</option>
+                                                                        <option value="click">{tr(lg, "کلیک", "Click")}</option>
+                                                                        <option value="hover">{tr(lg, "هاور", "Hover")}</option>
                                                                     </select>
                                                                 </label>
-                                                                <label>"کار"
+                                                                <label>{tr(lg, "کار", "Action")}
                                                                     <select on:change=move |ev| inter_kind.set(event_target_value(&ev))>
-                                                                        <option value="page">"رفتن به صفحه"</option>
-                                                                        <option value="url">"باز کردن پیوند"</option>
+                                                                        <option value="page">{tr(lg, "رفتن به صفحه", "Go to page")}</option>
+                                                                        <option value="url">{tr(lg, "باز کردن پیوند", "Open link")}</option>
                                                                     </select>
                                                                 </label>
                                                             </div>
                                                             {move || if inter_kind.get() == "url" {
-                                                                view! { <label class="full">"نشانی پیوند" <input type="text" placeholder="https://example.com" prop:value=move || inter_url.get() on:input=move |ev| inter_url.set(event_target_value(&ev)) /></label> }.into_any()
+                                                                view! { <label class="full">{tr(lg, "نشانی پیوند", "Link address")} <input type="text" placeholder="https://example.com" prop:value=move || inter_url.get() on:input=move |ev| inter_url.set(event_target_value(&ev)) /></label> }.into_any()
                                                             } else {
                                                                 view! {
-                                                                    <label class="full">"صفحه مقصد"
+                                                                    <label class="full">{tr(lg, "صفحه مقصد", "Target page")}
                                                                         <select on:change=move |ev| inter_page.set(event_target_value(&ev))>
                                                                             {bundle.with(|b| b.project.pages.iter().map(|pg| {
                                                                                 view! { <option value=pg.route.clone()>{format!("{} ({})", pg.name, pg.route)}</option> }
@@ -5114,7 +5443,11 @@ fn App() -> impl IntoView {
                                                                     }
                                                                 };
                                                                 if target.is_empty() {
-                                                                    render_note.set("اول مقصد تعامل را کامل کنید.".to_string());
+                                                                    render_note.set(msg(
+                                                                        lang.get_untracked(),
+                                                                        "اول مقصد تعامل را کامل کنید.",
+                                                                        "Please complete the interaction target first.",
+                                                                    ));
                                                                     return;
                                                                 }
                                                                 let line = format!("{}|{}|{}", inter_trigger.get_untracked(), kind, target);
@@ -5126,11 +5459,11 @@ fn App() -> impl IntoView {
                                                                     }
                                                                     n.props.insert("interactions".into(), encode_interactions(&entries));
                                                                 });
-                                                            }>"افزودن تعامل"</button>
-                                                            <p class="hint">"در پیش نمایش، کلیک و هاور هر دو کار می کنند. در خروجی کد، کلیک به پیوند واقعی تبدیل می شود."</p>
+                                                            }>{tr(lg, "افزودن تعامل", "Add interaction")}</button>
+                                                            <p class="hint">{tr(lg, "در پیش‌نمایش، کلیک و هاور هر دو کار می‌کنند. در خروجی کد، کلیک به یک پیوند واقعی تبدیل می‌شود.", "In the preview, both click and hover work. In the code output, click becomes a real link.")}</p>
                                                         </details>
                                                     })}
-                                                    <p class="node-id">{format!("شناسه: {}", node.id)}</p>
+                                                    <p class="node-id">{match lg { Lang::Fa => format!("شناسه: {}", node.id), Lang::En => format!("ID: {}", node.id) }}</p>
                                                 </div>
                                             }.into_any()
                                         }
@@ -5144,32 +5477,49 @@ fn App() -> impl IntoView {
             </div>
 
             <footer class="statusbar">
-                <span>{move || format!("{} عنصر در این صفحه", flat_all().len())}</span>
+                <span>{move || match lang.get() {
+                    Lang::Fa => format!("{} عنصر در این صفحه", flat_all().len()),
+                    Lang::En => format!("{} elements on this page", flat_all().len()),
+                }}</span>
                 <span class="status-sel">{move || {
+                    let lg = lang.get();
                     let id = selected_id.get();
                     let count = sel_set.get().len();
                     if id.is_empty() {
-                        "بدون انتخاب".to_string()
+                        tr(lg, "بدون انتخاب", "Nothing selected").to_string()
                     } else if count > 1 {
-                        format!("{count} عنصر انتخاب شده")
+                        match lg {
+                            Lang::Fa => format!("{count} عنصر انتخاب شده"),
+                            Lang::En => format!("{count} elements selected"),
+                        }
                     } else {
                         bundle.with(|b| {
                             b.project
                                 .pages
                                 .get(page_index.get())
                                 .and_then(|pg| pg.root.find(&id))
-                                .map(|n| format!("{} / {}", n.id, kind_fa(n.kind)))
+                                .map(|n| format!("{} / {}", n.id, kind_label(n.kind, lg)))
                                 .unwrap_or_default()
                         })
                     }
                 }}</span>
-                <span>{move || format!("بزرگ نمایی ٪{}", (scale() * 100.0).round() as i32)}</span>
-                <span class="status-save">{move || saved_stamp.get()}</span>
+                <span>{move || match lang.get() {
+                    Lang::Fa => format!("بزرگ‌نمایی ٪{}", (scale() * 100.0).round() as i32),
+                    Lang::En => format!("Zoom {}%", (scale() * 100.0).round() as i32),
+                }}</span>
+                <span class="status-save">{move || {
+                    let lg = lang.get();
+                    match saved_stamp.get() {
+                        SaveStamp::AutosaveOn => tr(lg, "ذخیره خودکار روی این مرورگر فعال است", "Autosave is on in this browser").to_string(),
+                        SaveStamp::SavedAt(t) => if lg == Lang::Fa { format!("ذخیره شد، ساعت {}", t) } else { format!("Saved at {}", t) },
+                        SaveStamp::FreshProject => tr(lg, "پروژه تازه ساخته شد و ذخیره پاک شد", "A new project was created and the saved work was cleared").to_string(),
+                    }
+                }}</span>
                 {move || {
                     let note = render_note.get();
                     (!note.is_empty()).then(|| view! { <span class="status-note">{note}</span> })
                 }}
-                <button class="reset" on:click=reset_all>"بازنشانی"</button>
+                <button class="reset" on:click=reset_all>{t("بازنشانی", "Reset")}</button>
             </footer>
             <input
                 type="file"
@@ -5198,47 +5548,50 @@ fn App() -> impl IntoView {
                 view! {
                     <div class="home-overlay">
                         <div class="home-inner">
-                            <img class="home-logo" src="assets/logo-mark.svg" alt="Chida"/>
+                            <span class="home-logo-chip"><img class="home-logo" src="assets/logo-mark.svg" alt="Chida"/></span>
                             <h1>"چیدا"</h1>
-                            <p class="home-sub">"سایتت را از صفر بکش؛ چیدا از آن یک برنامه واقعی می‌سازد."</p>
+                            <p class="home-sub">{t("بدون یک خط کدنویسی، سایت خود را از صفر بسازید.", "Build your own site from zero, without writing a single line of code.")}</p>
                             {saved.then(|| view! {
                                 <button class="home-continue" on:click=move |_| home_open.set(false)>
-                                    {format!("ادامه کار قبلی: {saved_name}")}
+                                    {move || match lang.get() {
+                                        Lang::Fa => format!("ادامه کار قبلی: {saved_name}"),
+                                        Lang::En => format!("Continue previous work: {saved_name}"),
+                                    }}
                                 </button>
                             })}
                             <div class="home-actions">
                                 <button class="home-card" on:click=move |_| start_project(blank_bundle())>
-                                    <span class="home-card-icon">"＋"</span>
-                                    <strong>"پروژه خالی"</strong>
-                                    <span>"یک صفحه خالی با یک فریم دسکتاپ؛ از صفر شروع کن."</span>
+                                    <span class="home-card-icon" inner_html=CARD_BLANK_SVG></span>
+                                    <strong>{t("پروژه خالی", "Blank project")}</strong>
+                                    <span>{t("یک صفحه خالی با یک فریم دسکتاپ؛ از صفر شروع کنید.", "A blank page with one desktop frame. Start from zero.")}</span>
                                 </button>
                                 <button class="home-card" on:click=move |_| {
                                     if let Some(input) = open_ref.get_untracked() {
                                         input.click();
                                     }
                                 }>
-                                    <span class="home-card-icon">"📂"</span>
-                                    <strong>"باز کردن فایل"</strong>
-                                    <span>"یک فایل پروژه چیدا با پسوند chida.json انتخاب کن."</span>
+                                    <span class="home-card-icon" inner_html=CARD_OPEN_SVG></span>
+                                    <strong>{t("باز کردن فایل", "Open a file")}</strong>
+                                    <span>{t("یک فایل پروژه چیدا با پسوند chida.json انتخاب کنید.", "Choose a Chida project file with the chida.json extension.")}</span>
                                 </button>
                                 <button class="home-card" on:click=move |_| {
                                     if let Some(input) = wp_ref.get_untracked() {
                                         input.click();
                                     }
                                 }>
-                                    <span class="home-card-icon">"📦"</span>
-                                    <strong>"قالب وردپرس"</strong>
-                                    <span>"یک فایل zip قالب وردپرس انتخاب کن؛ ویرایشش کن و دوباره قالب تحویل بگیر."</span>
+                                    <span class="home-card-icon" inner_html=CARD_WP_SVG></span>
+                                    <strong>{t("قالب وردپرس", "WordPress theme")}</strong>
+                                    <span>{t("یک فایل zip قالب وردپرس انتخاب کنید؛ آن را ویرایش کنید و دوباره به‌صورت قالب تحویل بگیرید.", "Choose a WordPress theme zip file, edit it, and export it as a theme again.")}</span>
                                 </button>
                             </div>
                             {move || {
                                 let e = home_error.get();
                                 (!e.is_empty()).then(|| view! { <p class="home-error">{e}</p> })
                             }}
-                            <h2 class="home-tpl-title">"قالب آماده"</h2>
-                            <p class="home-sub small">"از یک قالب شروع کن و هر جایش را که خواستی عوض کن."</p>
+                            <h2 class="home-tpl-title">{t("قالب آماده", "Ready templates")}</h2>
+                            <p class="home-sub small">{t("از یک قالب شروع کنید و هر بخش را که خواستید تغییر دهید.", "Start from a template and change any part you like.")}</p>
                             <div class="tpl-grid">
-                                {TEMPLATES.iter().map(|(key, name, thumb)| {
+                                {TEMPLATES.iter().map(|(key, fa, en, thumb)| {
                                     let key_owned = key.to_string();
                                     view! {
                                         <button class="tpl-card" on:click=move |_| {
@@ -5246,8 +5599,8 @@ fn App() -> impl IntoView {
                                                 start_project(b);
                                             }
                                         }>
-                                            <img src=*thumb alt=*name/>
-                                            <span>{*name}</span>
+                                            <img src=*thumb alt=move || tr(lang.get(), fa, en)/>
+                                            <span>{t(fa, en)}</span>
                                         </button>
                                     }
                                 }).collect_view()}
@@ -5278,9 +5631,12 @@ fn App() -> impl IntoView {
                 view! {
                     <div class="preview-overlay">
                         <div class="preview-head">
-                            <strong>{format!("پیش‌نمایش: {pname}")}</strong>
-                            <span class="hint">"دکمه‌های پیونددار در پیش‌نمایش کار می‌کنند؛ برای خروج Esc یا بستن"</span>
-                            <button class="preview-close" on:click=move |_| preview.set(false)>"بستن ✕"</button>
+                            <strong>{move || match lang.get() {
+                                Lang::Fa => format!("پیش‌نمایش: {pname}"),
+                                Lang::En => format!("Preview: {pname}"),
+                            }}</strong>
+                            <span class="hint">{t("دکمه‌های دارای پیوند در پیش‌نمایش کار می‌کنند؛ برای خروج، Esc را بزنید یا دکمه بستن را انتخاب کنید.", "Linked buttons work in the preview. Press Esc or choose the close button to exit.")}</span>
+                            <button class="preview-close" on:click=move |_| preview.set(false)>{t("بستن", "Close")} " ✕"</button>
                         </div>
                         <div class="preview-stage">
                             <div class="preview-scaler" style=format!("width:{}px;height:{}px;", pw * pv, ph * pv)>
@@ -5316,7 +5672,7 @@ fn App() -> impl IntoView {
                                         let label = if n.src.is_some() {
                                             String::new()
                                         } else if n.kind == NodeKind::Image {
-                                            "🖼".to_string()
+                                            tr(lang.get(), "تصویر", "Image").to_string()
                                         } else {
                                             n.text.clone().unwrap_or_default()
                                         };
@@ -5361,7 +5717,7 @@ fn App() -> impl IntoView {
                                         >
                                             {label}
                                             {svg_html.map(|html| view! { <span class="node-svg" inner_html=html></span> })}
-                                            {has_inter.then(|| view! { <span class="link-badge" title="این عنصر تعامل دارد">"🔗"</span> })}
+                                            {has_inter.then(|| view! { <span class="link-badge" title=t("این عنصر تعامل دارد", "This element has an interaction")><span class="mini-icon" inner_html=LINK_SVG></span></span> })}
                                         </div>
                                         }
                                     }).collect_view()}
@@ -5382,12 +5738,12 @@ fn App() -> impl IntoView {
                         style=format!("left:{x}px;top:{y}px;")
                         on:mousedown=|ev: leptos::ev::MouseEvent| ev.stop_propagation()
                     >
-                        <button on:click=move |_| { group_selection(); }>"گروه بندی"</button>
-                        <button on:click=move |_| { ungroup_selection(); }>"باز کردن گروه"</button>
-                        <button on:click=move |_| { select_only(id_dup.clone()); duplicate_selection(); }>"تکثیر"</button>
-                        <button on:click=move |_| { select_only(id_fwd.clone()); reorder_selection(id_fwd.clone(), true); }>"بیار جلو"</button>
-                        <button on:click=move |_| { select_only(id_back.clone()); reorder_selection(id_back.clone(), false); }>"ببر عقب"</button>
-                        <button class="danger" on:click=move |_| { select_only(id_del.clone()); delete_selection(); }>"حذف"</button>
+                        <button on:click=move |_| { group_selection(); }>{t("گروه‌بندی", "Group")}</button>
+                        <button on:click=move |_| { ungroup_selection(); }>{t("باز کردن گروه", "Ungroup")}</button>
+                        <button on:click=move |_| { select_only(id_dup.clone()); duplicate_selection(); }>{t("تکثیر", "Duplicate")}</button>
+                        <button on:click=move |_| { select_only(id_fwd.clone()); reorder_selection(id_fwd.clone(), true); }>{t("به جلو بیاورید", "Bring forward")}</button>
+                        <button on:click=move |_| { select_only(id_back.clone()); reorder_selection(id_back.clone(), false); }>{t("به عقب ببرید", "Send backward")}</button>
+                        <button class="danger" on:click=move |_| { select_only(id_del.clone()); delete_selection(); }>{t("حذف", "Delete")}</button>
                     </div>
                 }
             })}
