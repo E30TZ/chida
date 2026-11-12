@@ -29,8 +29,8 @@ jobs:
           targets: wasm32-unknown-unknown
       - name: Install Trunk
         run: cargo install trunk --locked
-    - name: Generate template fixtures
-      run: python3 tools/gen-editor-fixtures.py
+      - name: Generate template fixtures
+          run: python3 tools/gen-editor-fixtures.py
       - name: Build the editor
         working-directory: apps/editor
         run: trunk build --release --public-url /chida/
