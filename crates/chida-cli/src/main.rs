@@ -7,6 +7,7 @@
 //!   chida info <project.chida.json>
 
 mod demo;
+mod gen;
 mod project_file;
 mod templates;
 
@@ -44,7 +45,10 @@ fn cmd_new(args: &[String]) -> Result<(), String> {
         "clinic" => templates::clinic(),
         "restaurant" => templates::restaurant(),
         "portfolio" => templates::portfolio(),
-        other => return Err(format!("unknown template: {other} (try: chida templates)")),
+        other => match gen::build_template(other) {
+            Some(file) => file,
+            None => return Err(format!("unknown template: {other} (try: chida templates)")),
+        },
     };
     let out_dir = arg_value(args, "--out")
         .map(PathBuf::from)
@@ -258,6 +262,25 @@ fn cmd_templates() -> Result<(), String> {
     println!("  restaurant    Taam Restaurant: hero, featured dishes, reservation form and full menu page");
     println!("  portfolio     Personal portfolio: hero, works grid, services and contact page");
     println!("  blank         One empty page with a title");
+    let packs = gen::all_packs();
+    if !packs.is_empty() {
+        println!();
+        println!("Generated templates ({}):", packs.len());
+        for (cat, fa, en) in gen::CATEGORIES {
+            let in_cat: Vec<&gen::Pack> = packs.iter().filter(|p| &p.category == cat).collect();
+            if in_cat.is_empty() {
+                continue;
+            }
+            println!();
+            println!("  {fa} ({en}):");
+            for p in in_cat {
+                println!(
+                    "    {:<22} {} ({}) - {}",
+                    p.id, p.name_fa, p.name_en, p.brand
+                );
+            }
+        }
+    }
     Ok(())
 }
 
