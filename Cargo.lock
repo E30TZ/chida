@@ -58,7 +58,7 @@ checksum = "f079e83a288787bcd14a6aea84cee5c87a67c5a3e660c30f557a3d24761b3527"
 
 [[package]]
 name = "chida-cli"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "chida-codegen",
  "chida-core",
@@ -72,7 +72,7 @@ dependencies = [
 
 [[package]]
 name = "chida-codegen"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "chida-core",
  "chida-db",
@@ -83,7 +83,7 @@ dependencies = [
 
 [[package]]
 name = "chida-core"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -91,7 +91,7 @@ dependencies = [
 
 [[package]]
 name = "chida-db"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -99,7 +99,7 @@ dependencies = [
 
 [[package]]
 name = "chida-logic"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "chida-db",
  "serde",
@@ -108,7 +108,7 @@ dependencies = [
 
 [[package]]
 name = "chida-render"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "chida-core",
  "fontdue",
@@ -121,7 +121,7 @@ dependencies = [
 
 [[package]]
 name = "chida-wp"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "chida-core",
  "zip",

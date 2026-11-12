@@ -151,19 +151,19 @@ All files live on one page: the [download page](https://github.com/E30TZ/chida/r
 
 | Your computer | Take this file | Then what |
 | --- | --- | --- |
-| Windows | `chida-2.0.0-windows-x86_64.zip` | Unzip it, run `chida.exe` |
-| Mac with Apple Silicon | `chida-2.0.0-macos-aarch64.tar.gz` | Unzip it, run `chida` |
-| Mac with Intel | `chida-2.0.0-macos-x86_64.tar.gz` | Unzip it, run `chida` |
-| Linux, any distro | `chida-2.0.0-linux-x86_64.tar.gz` | Unzip it, run `chida`. No install |
-| Linux, one single file | `chida-2.0.0-linux-x86_64.AppImage` | Make it executable, double-click |
-| Debian or Ubuntu | `chida_2.0.0_amd64.deb` | Install it like any program |
-| Fedora or RHEL | `chida-2.0.0-1.fc45.x86_64.rpm` | Install it like any program |
-| Linux on ARM64 | `chida-2.0.0-linux-aarch64.tar.gz` | Unzip it, run `chida` |
-| Only the editor, in a browser | `chida-editor-2.0.0.zip` | Unzip it, open it (note below) |
+| Windows | `chida-2.0.1-windows-x86_64.zip` | Unzip it, run `chida.exe` |
+| Mac with Apple Silicon | `chida-2.0.1-macos-aarch64.tar.gz` | Unzip it, run `chida` |
+| Mac with Intel | `chida-2.0.1-macos-x86_64.tar.gz` | Unzip it, run `chida` |
+| Linux, any distro | `chida-2.0.1-linux-x86_64.tar.gz` | Unzip it, run `chida`. No install |
+| Linux, one single file | `chida-2.0.1-linux-x86_64.AppImage` | Make it executable, double-click |
+| Debian or Ubuntu | `chida_2.0.1_amd64.deb` | Install it like any program |
+| Fedora or RHEL | `chida-2.0.1-1.fc45.x86_64.rpm` | Install it like any program |
+| Linux on ARM64 | `chida-2.0.1-linux-aarch64.tar.gz` | Unzip it, run `chida` |
+| Only the editor, in a browser | `chida-editor-2.0.1.zip` | Unzip it, open it (note below) |
 
 The `SHA256SUMS` file on the same page lets you check your download arrived whole.
 
-**You want the editor in its own window, no terminal?** Take a desktop installer from the same page: `Chida_2.0.0_x64-setup.exe` (Windows), `Chida_2.0.0_x64.dmg` (Mac Intel), `Chida_2.0.0_aarch64.dmg` (Mac Apple Silicon), `Chida-desktop_2.0.0_amd64.deb` (Debian, Ubuntu), `Chida-desktop_2.0.0_amd64.AppImage` (any Linux), `Chida-2.0.0-1.x86_64.rpm` (Fedora, RHEL).
+**You want the editor in its own window, no terminal?** Take a desktop installer from the same page: `Chida_2.0.1_x64-setup.exe` (Windows), `Chida_2.0.1_x64.dmg` (Mac Intel), `Chida_2.0.1_aarch64.dmg` (Mac Apple Silicon), `Chida-desktop_2.0.1_amd64.deb` (Debian, Ubuntu), `Chida-desktop_2.0.1_amd64.AppImage` (any Linux), `Chida-2.0.1-1.x86_64.rpm` (Fedora, RHEL).
 
 ### Step 2: copy two lines
 
@@ -182,7 +182,7 @@ The first line makes a small shop project. The second line draws its pages as pi
 
 **🖼️ Open the folder** `myshop-pictures`. The pictures inside are your shop, drawn by Chida. That is the entire idea, working in your hands.
 
-**✏️ If you prefer clicking to typing:** unzip `chida-editor-2.0.0.zip` and open the editor in your browser. If the page stays white, serve the folder with any small local web server: browsers do not load the editor straight from a file.
+**✏️ If you prefer clicking to typing:** unzip `chida-editor-2.0.1.zip` and open the editor in your browser. If the page stays white, serve the folder with any small local web server: browsers do not load the editor straight from a file.
 
 **🗂️ One file is the whole project:** `myshop/myshop.chida.json` holds the pages, the tables and the rules. Move it, copy it, send it to a friend.
 

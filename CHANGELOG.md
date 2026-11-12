@@ -3,6 +3,44 @@
 All notable changes to Chida are recorded here. The format is based on
 Keep a Changelog, and this project uses semantic versioning.
 
+## [2.0.1] - 2026-11-12
+
+Editor UX overhaul. The editor is now bilingual (Persian and English,
+with the layout flipping between RTL and LTR), with a calmer top bar,
+a grouped properties panel, a blank-canvas first step, and formal text
+throughout. Both READMEs are rewritten in a formal register. No feature
+was removed.
+
+### Changed
+
+- The top bar keeps one blue primary action (Preview); upload, render,
+  build code, JSON export and publish live in one overflow menu.
+- The language switcher (Persian / English) sits in the top bar and the
+  choice persists across visits.
+- The properties panel hides sections that do not apply to the current
+  selection; text formatting appears only when the node has text.
+- A blank page shows one formal line and an "Insert a ready section"
+  button instead of an empty canvas.
+- The start screen carries the product promise line and three calm
+  entry cards.
+
+## [2.0.0] - 2026-11-10
+
+The second major release. The editor becomes a real design tool, and
+WordPress themes can be imported and exported.
+
+### Added
+
+- Vector pen with bezier point editing, plus polygon, star and arrow
+  tools.
+- Components with instances, real groups, smart guides and draggable
+  ruler guides.
+- Auto-layout v2 (hug and fill sizing, per-side padding, wrap),
+  multi-stop gradients, stacked shadows, layer and background blur.
+- Click and hover interactions, and 25 ready section blocks.
+- WordPress theme import (zip in, editable pages out) and export
+  (a ready installable theme zip out).
+
 ## [1.0.1] - 2026-11-09
 
 Release pipeline fix. No changes to the Chida tool itself; the 1.0.0
